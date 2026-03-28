@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   nix-checks:
     runs-on: ubuntu-latest
@@ -18,8 +21,22 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v17
 
+      - name: Nix Diagnostics
+        run: |
+          nix --version
+          nix config show experimental-features || true
+
       - name: Flake Evaluation
-        run: nix flake check --no-build --accept-flake-config
+        run: |
+          for attempt in 1 2 3; do
+            echo "Flake evaluation attempt $attempt/3"
+            if nix --extra-experimental-features "nix-command flakes" \
+              flake check --no-build --accept-flake-config; then
+              exit 0
+            fi
+            sleep 8
+          done
+          exit 1
 
       - name: Structural Tests
         run: |
@@ -27,4 +44,6 @@ jobs:
             --run "pytest tests/test_migration.py -q"
 
       - name: Dry Build System
-        run: nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
+        run: |
+          nix --extra-experimental-features "nix-command flakes" \
+            build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
