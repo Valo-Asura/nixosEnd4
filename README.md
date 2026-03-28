@@ -111,6 +111,7 @@ Mutable generated outputs are copied or linked into:
 - Browsers: Zen Browser and Brave are installed declaratively; Firefox is removed from the active Home Manager profile.
 - Web defaults: Zen Browser is the default web handler for `http`, `https`, and `text/html`.
 - IDEs: VS Code `1.109.2`, Cursor `2.4.31`, Kiro `0.9.2`, and Antigravity `1.16.5` come from the pinned unstable input set through Nixpkgs and are tuned by [home/ide.nix](./home/ide.nix).
+- Notebook runtime: IDE notebooks now default to a declarative local Python interpreter that includes `pip` + `ipykernel` (via [home/ide.nix](./home/ide.nix)) so Jupyter cell execution works out of the box.
 - Python/DS tooling: `conda` (Anaconda-compatible workflow), `jupyterlab`, and `uv` are installed declaratively via [home/packages.nix](./home/packages.nix).
 - AI tooling: `claude-code` (CLI agent) and `ollama` (CLI client) are installed declaratively; the local Ollama CUDA service + Open WebUI stack remains managed by [modules/ollama.nix](./modules/ollama.nix).
 - GUI file managers: Nemo is kept as the single primary GUI file manager; redundant `nautilus` and `thunar` installs were removed.
