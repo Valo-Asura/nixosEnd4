@@ -161,3 +161,12 @@ nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
 - CI: [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
 - Markdown lint: [`.github/workflows/markdown.yml`](./.github/workflows/markdown.yml)
 - Contribution guide: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+
+## Credits
+
+- end-4 and the original `dots-hyprland`/Illogical Impulse vision and UX direction.
+- soymou for [`illogical-flake`](https://github.com/soymou/illogical-flake), which this repo layers on top.
+- Hyprland team for [`Hyprland`](https://github.com/hyprwm/Hyprland).
+- outfoxxed + contributors for [`QuickShell`](https://git.outfoxxed.me/quickshell/quickshell).
+- InioX for [`matugen`](https://github.com/InioX/matugen).
+- Zen Browser and Brave projects for the browser experience this config tunes.
