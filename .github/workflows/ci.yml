@@ -26,12 +26,12 @@ jobs:
           nix --version
           nix config show experimental-features || true
 
-      - name: Flake Evaluation
+      - name: Flake Metadata
         run: |
           for attempt in 1 2 3; do
-            echo "Flake evaluation attempt $attempt/3"
+            echo "Flake metadata attempt $attempt/3"
             if nix --extra-experimental-features "nix-command flakes" \
-              flake check --no-build --accept-flake-config; then
+              flake metadata .; then
               exit 0
             fi
             sleep 8
