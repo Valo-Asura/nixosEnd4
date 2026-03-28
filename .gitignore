@@ -1,0 +1,11 @@
+result
+result-*
+.direnv
+.envrc
+.DS_Store
+.cache/
+.pytest_cache/
+.venv/
+.vscode/
+__pycache__/
+*.pyc

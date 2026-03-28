@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  nix-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v17
+
+      - name: Configure Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      - name: Flake Evaluation
+        run: nix flake check --no-build --accept-flake-config
+
+      - name: Structural Tests
+        run: |
+          nix-shell -p python3 python3Packages.pytest python3Packages.hypothesis \
+            --run "pytest tests/test_migration.py -q"
+
+      - name: Dry Build System
+        run: nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
