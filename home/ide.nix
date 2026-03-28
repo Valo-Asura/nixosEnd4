@@ -7,6 +7,13 @@
 
 let
   cfg = config.modules.ide;
+  jupyterPython = pkgs.python3.withPackages (
+    ps: with ps; [
+      pip
+      ipykernel
+      jupyterlab
+    ]
+  );
   vscodeExtensions = with pkgs.vscode-extensions; [
     bbenoist.nix
     github.github-vscode-theme
@@ -103,6 +110,7 @@ in
         ${pkgs.jq}/bin/jq -e \
           --arg nil "${pkgs.nil}/bin/nil" \
           --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
+          --arg python "${jupyterPython}/bin/python3" \
           '
             ."nix.enableLanguageServer" == true and
             ."nix.serverPath" == $nil and
@@ -113,7 +121,9 @@ in
             ."workbench.iconTheme" == "material-icon-theme" and
             ."window.commandCenter" == false and
             ."telemetry.telemetryLevel" == "off" and
-            ."update.mode" == "none"
+            ."update.mode" == "none" and
+            ."python.defaultInterpreterPath" == $python and
+            ."jupyter.jupyterServerType" == "local"
           ' \
           "$settings" >/dev/null 2>&1 || return 0
 
@@ -135,6 +145,7 @@ in
         ${pkgs.jq}/bin/jq \
           --arg nil "${pkgs.nil}/bin/nil" \
           --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
+          --arg python "${jupyterPython}/bin/python3" \
           '. + {
             "nix.enableLanguageServer": true,
             "nix.serverPath": $nil,
@@ -150,6 +161,8 @@ in
             "editor.smoothScrolling": true,
             "telemetry.telemetryLevel": "off",
             "update.mode": "none",
+            "python.defaultInterpreterPath": $python,
+            "jupyter.jupyterServerType": "local",
             "extensions.autoCheckUpdates": false,
             "extensions.autoUpdate": false,
             "workbench.enableExperiments": false,
