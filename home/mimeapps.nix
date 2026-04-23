@@ -16,7 +16,7 @@ let
       ];
     }
     {
-      desktop = "zen.desktop";
+      desktop = "firefox.desktop";
       mimes = [
         "text/html"
         "application/xhtml+xml"

@@ -46,8 +46,10 @@ def test_nix_files_are_readable():
     for rel in [
         "flake.nix",
         "configuration.nix",
+        "hosts/x15xs/default.nix",
         "modules/portal.nix",
         "home/home.nix",
+        "users/asura/default.nix",
         "home/browser.nix",
         "home/ide.nix",
         "home/mimeapps.nix",
@@ -85,6 +87,8 @@ def test_flake_pins_the_target_stack():
         'git+https://git.outfoxxed.me/quickshell/quickshell',
         'github:InioX/matugen',
         'inputs.quickshell.follows = "quickshell";',
+        "./hosts/x15xs",
+        "./users/asura",
         "./home/illogical-impulse-module.nix",
         "matugen = inputs.matugen.packages.",
     ]:
@@ -103,13 +107,20 @@ def test_wrapper_uses_local_package_qt_and_settings_layers():
         assert contains_literal(wrapper, literal), f"Missing wrapper literal: {literal}"
 
 
+def test_entrypoint_shims_forward_to_host_and_user_folders():
+    configuration = read_file("configuration.nix")
+    home_shim = read_file("home/home.nix")
+    assert contains_literal(configuration, "import ./hosts/x15xs args")
+    assert contains_literal(home_shim, "import ../users/asura args")
+
+
 def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
-    home = read_file("home/home.nix")
+    home = read_file("users/asura/default.nix")
     for literal in [
-        "./hyprland.nix",
-        "./browser.nix",
-        "./ide.nix",
-        "./mimeapps.nix",
+        "../../home/hyprland.nix",
+        "../../home/browser.nix",
+        "../../home/ide.nix",
+        "../../home/mimeapps.nix",
         "stylix.enable = false;",
         'name = "Bibata-Modern-Classic";',
         'name = "adw-gtk3-dark";',
@@ -129,18 +140,21 @@ def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
     assert contains_pattern(home, r"programs\.illogical-impulse\s*=\s*\{\s*enable\s*=\s*true;")
 
 
-def test_browser_module_removes_firefox_and_keeps_zen_as_default():
+def test_browser_module_themes_firefox_and_configures_chrome():
     browser = read_file("home/browser.nix")
     for literal in [
         'enable = lib.mkEnableOption "browser package set and profile tuning";',
         "zen-browser",
-        "brave",
-        "programs.firefox.enable = lib.mkForce false;",
-        "home.activation.configureBraveProfile",
-        'brave.tabs.vertical_tabs_enabled = true',
-        'brave.web_discovery_enabled = false',
+        "google-chrome",
+        "programs.firefox = {",
+        "profiles.asura = {",
+        'default = "DuckDuckGo";',
+        "toolkit.legacyUserProfileCustomizations.stylesheets",
+        "--rose-base: #120b10;",
+        "home.activation.configureChromeProfile",
+        'chrome_dir="$HOME/.config/google-chrome"',
         'browser.custom_chrome_frame = true',
-        'browser.theme.color_scheme2 = 2',
+        'browser.theme.color_scheme = 2',
     ]:
         assert contains_literal(browser, literal), f"Missing browser literal: {literal}"
 
@@ -176,7 +190,7 @@ def test_mimeapps_module_keeps_mimeapps_writable_and_seeds_defaults():
     for literal in [
         'enable = lib.mkEnableOption "writable MIME defaults and file-manager helpers";',
         "seededMimeDefaults = [",
-        "zen.desktop",
+        "firefox.desktop",
         "gnome-text-editor",
         "loupe",
         "papers",
@@ -231,16 +245,24 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         'calendar.locale = "en-GB";',
         'format = "hh:mm AP";',
         "enableSidebar = false;",
-        "workspaceZoom = 1.03;",
+        "enableWorkspace = false;",
+        "workspaceZoom = 1.0;",
         "radius = 64;",
-        "updateInterval = 5000;",
+        "lock.useHyprlock = false;",
+        "updateInterval = 10000;",
+        "historyLength = 30;",
+        "pomodoro.focus = 2700;",
         "keepRightSidebarLoaded = false;",
         "bar.weather = {",
         "enable = true;",
         "enableGPS = false;",
-        'city = "Rishikesh, India 249204";',
+        'city = "Rishikesh, Uttarakhand, India 249204";',
         "useUSCS = false;",
         "fetchInterval = 10;",
+        's|interval: 200|interval: 1000|',
+        "$out/ii/services/TimerService.qml",
+        's|Quickshell.execDetached(\\\\["loginctl", "lock-session"\\\\]);|GlobalStates.screenLocked = true;|',
+        "GlobalStates.screenLocked = true;",
         'state_dir="$HOME/.local/state/quickshell/user"',
         'todo_file="$state_dir/todo.json"',
         'notes_file="$state_dir/notes.txt"',
@@ -291,6 +313,7 @@ def test_hyprland_overrides_replace_upstream_sources():
     for literal in [
         'xdg.configFile."hypr/custom/keybinds.conf".source = lib.mkForce',
         'xdg.configFile."hypr/hyprland/keybinds.conf".source = lib.mkForce',
+        'xdg.configFile."hypr/hypridle.conf".source = lib.mkForce',
         'xdg.configFile."hypr/custom/general.conf".source = lib.mkForce',
         'xdg.configFile."hypr/monitors.conf".source = lib.mkForce',
         'xdg.configFile."hypr/hyprland/general.conf".source = lib.mkForce',
@@ -352,12 +375,14 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bindn = $mainMod, Q, global, quickshell:searchToggleReleaseInterrupt",
         "bindn = $mainMod, Tab, global, quickshell:searchToggleReleaseInterrupt",
         "bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt",
-        "bindn = $mod, code:10, global, quickshell:searchToggleReleaseInterrupt",
-        "bindn = $shiftMod, code:10, global, quickshell:searchToggleReleaseInterrupt",
+        'workspaceKeycodes = builtins.genList (i: "code:1${toString i}") 9;',
+        "workspaceInterruptBinds = lib.concatStringsSep",
+        "workspaceDispatchBinds = lib.concatStringsSep",
+        "hyprIdleConf = ''",
+        'hyprctl dispatch global quickshell:lock || qs -c "$HOME/.config/quickshell/ii" ipc call lock activate',
         'pkgs.writeShellScriptBin "clipboard"',
         'pkgs.writeShellScriptBin "wallpaper-switch"',
         'pkgs.writeShellScriptBin "wallpaper-random"',
-        'pkgs.writeShellScriptBin "sync-lock-wallpaper"',
         'pkgs.writeShellScriptBin "night-shift"',
         "bind = $mainMod, Q, killactive,",
         "bind = $mainMod, H, exit,",
@@ -365,17 +390,16 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bind = $mainMod, F, exec, file-manager",
         "bind = $mainMod, V, togglefloating,",
         "bind = $mainMod, J, togglesplit,",
-        "bind = $mainMod, B, exec, zen",
+        "bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox",
         "bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty",
         "bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland",
         "bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop",
-        "bind = $mainMod, Tab, global, quickshell:overviewWorkspacesToggle",
-        "bind = CTRL, L, exec, ${pkgs.hyprlock}/bin/hyprlock",
-        "bind = $mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock",
+        "bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle",
+        "bind = CTRL, L, global, quickshell:lock",
+        "bind = $mainMod, L, global, quickshell:lock",
         "bind = $shiftMod, C, exec, clipboard",
         "bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle",
         "bind = $shiftMod, P, exec, wallpaper-random",
-        "bind = $altMod, P, exec, sync-lock-wallpaper",
         "bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji",
         "bind = $mod, F2, exec, night-shift",
         "bind = $mainMod, Left, movefocus, l",
@@ -404,7 +428,7 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bind = , Return, submap, global",
         "bind = , Tab, submap, global",
         "bind = $shiftMod, R, submap, global",
-        "bindl = , switch:Lid Switch, exec, ${pkgs.hyprlock}/bin/hyprlock",
+        "bindl = , switch:Lid Switch, global, quickshell:lock",
         "Intentionally empty.",
     ]:
         assert contains_literal(hyprland, literal), f"Missing keybind literal: {literal}"
@@ -437,7 +461,7 @@ def test_boot_module_caps_saved_system_generations():
 
 
 def test_nix_gc_and_store_optimisation_are_enabled():
-    configuration = read_file("configuration.nix")
+    configuration = read_file("hosts/x15xs/default.nix")
     for literal in [
         "auto-optimise-store = true;",
         "max-jobs = \"auto\";",
@@ -447,15 +471,37 @@ def test_nix_gc_and_store_optimisation_are_enabled():
         "keep-outputs = true;",
         "keep-derivations = true;",
         "automatic = true;",
-        'dates = "daily";',
+        'dates = "Sun 04:30";',
         'options = "--delete-older-than 7d";',
-        "persistent = true;",
+        "persistent = false;",
+        'dates = [ "Sun 05:30" ];',
+        'randomizedDelaySec = "45m";',
     ]:
         assert contains_literal(configuration, literal), f"Missing Nix optimisation literal: {literal}"
 
 
+def test_hybrid_gpu_and_ollama_defaults_stay_resource_oriented():
+    configuration = read_file("hosts/x15xs/default.nix")
+    nvidia = read_file("modules/nvidia.nix")
+
+    for literal in [
+        'keepAlive = "2m";',
+        "guiEnable = false;",
+        '"nvidia.NVreg_TemporaryFilePath=/var/tmp"',
+    ]:
+        assert contains_literal(configuration, literal), f"Missing configuration literal: {literal}"
+
+    for literal in [
+        "powerManagement = {",
+        "enable = true;",
+        "finegrained = true;",
+        "enableOffloadCmd = true;",
+    ]:
+        assert contains_literal(nvidia, literal), f"Missing NVIDIA literal: {literal}"
+
+
 def test_networking_error_noise_fixes_are_enabled():
-    configuration = read_file("configuration.nix")
+    configuration = read_file("hosts/x15xs/default.nix")
     for literal in [
         'networking.networkmanager.dns = "systemd-resolved";',
         "services.resolved.enable = true;",
@@ -512,18 +558,27 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(readme, "custom/keybinds.conf")
     assert contains_literal(readme, "global submap")
     assert contains_literal(readme, "mimeapps.list")
-    assert contains_literal(readme, "Zen Browser is the default web handler")
+    assert contains_literal(readme, "Firefox is the default web handler")
+    assert contains_literal(readme, "Open WebUI disabled by default")
+    assert contains_literal(readme, "hosts/x15xs/default.nix")
+    assert contains_literal(readme, "users/asura/default.nix")
     assert contains_literal(readme, "VS Code `1.109.2`")
     assert contains_literal(readme, "latest `7` system generations")
-    assert contains_literal(readme, "daily garbage collection")
+    assert contains_literal(readme, "weekly garbage collection")
     assert contains_literal(readme, '`time.format = "hh:mm AP"`')
-    assert contains_literal(readme, 'bar.weather.city = "Rishikesh, India 249204"')
+    assert contains_literal(readme, '`time.pomodoro.focus = 2700` (`45m`)')
+    assert contains_literal(readme, 'Rishikesh, Uttarakhand, India 249204')
+    assert contains_literal(readme, '`background.parallax.enableWorkspace = false`')
+    assert contains_literal(readme, '`lock.useHyprlock = false`')
     assert contains_literal(readme, "todo.json")
     assert contains_literal(end4_settings, "background.parallax.enableSidebar = false")
     assert contains_literal(end4_settings, 'language.ui = "en_US"')
     assert contains_literal(end4_settings, 'time.format = "hh:mm AP"')
+    assert contains_literal(end4_settings, 'time.pomodoro.focus = 2700')
+    assert contains_literal(end4_settings, 'lock.useHyprlock = false')
+    assert contains_literal(end4_settings, "QuickShell/PAM is the primary lockscreen provider")
     assert contains_literal(end4_settings, "Wallpapers below `1920x1080`")
-    assert contains_literal(end4_settings, 'bar.weather.city = "Rishikesh, India 249204"')
+    assert contains_literal(end4_settings, 'Rishikesh, Uttarakhand, India 249204')
     assert contains_literal(end4_settings, "todo.json")
     assert contains_literal(hyprland_controls, "Super+Left/Right/Up/Down")
     assert contains_literal(hyprland_controls, "Super+J")
@@ -532,6 +587,8 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(hyprland_controls, "Super+Ctrl")
     assert contains_literal(hyprland_controls, "Super+Alt")
     assert contains_literal(hyprland_controls, "tap/release Super")
+    assert contains_literal(hyprland_controls, "lock with QuickShell")
+    assert contains_literal(hyprland_controls, "launch Firefox")
     assert contains_literal(hyprland_controls, "hypr/hyprland/keybinds.conf")
     assert contains_literal(hyprland_controls, "custom/keybinds.conf")
     assert not_contains_literal(readme, "Super+W")

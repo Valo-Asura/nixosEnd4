@@ -22,21 +22,24 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 - `appearance.wallpaperTheming.enableQtApps = false`
 - `appearance.wallpaperTheming.enableTerminal = true`
 - `background.parallax.enableSidebar = false`
-- `background.parallax.enableWorkspace = true`
-- `background.parallax.workspaceZoom = 1.03`
+- `background.parallax.enableWorkspace = false`
+- `background.parallax.workspaceZoom = 1.0`
 - `lock.blur.enable = true`
 - `lock.blur.extraZoom = 1.05`
 - `lock.blur.radius = 64`
-- `resources.updateInterval = 5000`
+- `lock.useHyprlock = false`
+- `resources.updateInterval = 10000`
+- `resources.historyLength = 30`
 - `sidebar.keepRightSidebarLoaded = false`
+- `time.pomodoro.focus = 2700` (`45 minutes`)
 - `bar.weather.enable = true`
 - `bar.weather.enableGPS = false`
-- `bar.weather.city = "Rishikesh, India 249204"`
+- `bar.weather.city` is auto-synced from current public IP geolocation at Home Manager activation (`ipapi.co`), fallback is `Rishikesh, Uttarakhand, India 249204`
 - `bar.weather.useUSCS = false`
 
 ## Display And Wallpaper Rules
 
-- The laptop panel is pinned in Hyprland to `eDP-1, 1920x1080@144, 0x0, 1`.
+- The laptop panel is pinned in Hyprland to `eDP-1, 1920x1080@144, 0x0, 1, vrr, 0`.
 - Wallpapers below `1920x1080` are replaced with the bundled `3840x2160` default during Home Manager activation.
 - QuickShell reads live colors from `~/.config/matugen/colors.json`.
 
@@ -46,14 +49,18 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 - Home Manager bootstraps `~/.local/state/quickshell/user/notes.txt` as a writable text file.
 - The local [home/end4-overrides/Todo.qml](./home/end4-overrides/Todo.qml) override normalizes malformed todo entries instead of letting the widget break on bad JSON.
 
-## Infinite Workspace Behavior
+## Workspace And Display Behavior
 
-- `general.layout = scrolling`
-- `gestures.workspace_swipe_create_new = true`
-- `gestures.workspace_swipe_forever = true`
-- `gestures.workspace_swipe_use_r = true`
-- `binds.allow_workspace_cycles = true`
-- `animations.workspace_wraparound = true`
+- Local Hyprland layer enforces `general.layout = dwindle`.
+- Panel mode is pinned to `eDP-1, 1920x1080@144, 0x0, 1, vrr, 0`.
+- Touchpad workspace swipe remains enabled (`3-finger horizontal`) from the upstream general config patch.
+- `misc.vrr = 0`, `render.direct_scanout = false`, and `cursor.no_hardware_cursors = true` are set for hybrid laptop stability.
+
+## Lock Behavior
+
+- QuickShell/PAM is the primary lockscreen provider.
+- Local Hyprland and Hypridle wiring call QuickShell lock directly.
+- Hyprlock is not part of the active lock path anymore.
 
 ## JSON Examples
 
@@ -72,13 +79,19 @@ Use the end-4 settings UI if you want, or edit `~/.config/illogical-impulse/conf
     "shortDateFormat": "dd/MM",
     "dateFormat": "ddd, dd/MM",
     "dateWithYearFormat": "dd/MM/yyyy",
-    "secondPrecision": false
+    "secondPrecision": false,
+    "pomodoro": {
+      "focus": 2700
+    }
+  },
+  "lock": {
+    "useHyprlock": false
   },
   "background": {
     "parallax": {
-      "enableWorkspace": true,
+      "enableWorkspace": false,
       "enableSidebar": false,
-      "workspaceZoom": 1.03
+      "workspaceZoom": 1.0
     }
   },
   "appearance": {
@@ -92,13 +105,14 @@ Use the end-4 settings UI if you want, or edit `~/.config/illogical-impulse/conf
     }
   },
   "resources": {
-    "updateInterval": 5000
+    "updateInterval": 10000,
+    "historyLength": 30
   },
   "bar": {
     "weather": {
       "enable": true,
       "enableGPS": false,
-      "city": "Rishikesh, India 249204",
+      "city": "Auto-detected at activation (ipapi.co)",
       "useUSCS": false,
       "fetchInterval": 10
     }

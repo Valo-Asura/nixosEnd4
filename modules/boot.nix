@@ -23,7 +23,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    boot.kernelPackages = pkgs.linuxPackages_zen;
+    boot.kernelPackages =
+      if pkgs ? linuxPackages_cachyos then
+        pkgs.linuxPackages_cachyos
+      else if pkgs ? linuxPackages_xanmod_latest then
+        pkgs.linuxPackages_xanmod_latest
+      else
+        pkgs.linuxPackages_zen;
 
     boot.loader = {
       grub.enable = false;

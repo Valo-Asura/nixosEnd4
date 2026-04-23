@@ -29,8 +29,10 @@ in
       open = true;
       modesetting.enable = true;
       nvidiaSettings = true;
-
-      powerManagement.finegrained = true;
+      powerManagement = {
+        enable = true;
+        finegrained = true;
+      };
 
       prime = {
         offload = {

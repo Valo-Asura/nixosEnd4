@@ -90,7 +90,6 @@ in
         libnotify
         grim
 
-        hyprlock
         hypridle
         hyprsunset
         wayland-protocols

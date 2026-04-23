@@ -84,7 +84,7 @@
                 ];
               }
             )
-            ./configuration.nix
+            ./hosts/x15xs
             stylix.nixosModules.stylix
             home-manager.nixosModules.home-manager
             {
@@ -98,7 +98,7 @@
                 sharedModules = [
                   ./home/illogical-impulse-module.nix
                 ];
-                users.asura = import ./home/home.nix;
+                users.asura = import ./users/asura;
               };
             }
           ];

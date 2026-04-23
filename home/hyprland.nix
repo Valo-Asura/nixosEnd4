@@ -29,9 +29,11 @@ let
     builtins.replaceStrings
       [
         "exec-once = easyeffects --hide-window --service-mode"
+        "exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh"
       ]
       [
         "# exec-once = easyeffects --hide-window --service-mode  # Disabled for idle RSS/process targets"
+        "# exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh  # Disabled for faster static-wallpaper startup"
       ]
       (builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/execs.conf");
 
@@ -211,26 +213,54 @@ let
     exec "$switchwall" --image "$selected" --mode dark
   '';
 
-  syncLockWallpaper = pkgs.writeShellScriptBin "sync-lock-wallpaper" ''
-    set -euo pipefail
+  workspaceKeycodes = builtins.genList (i: "code:1${toString i}") 9;
 
-    config_file="$HOME/.config/illogical-impulse/config.json"
-    cache_dir="$HOME/.cache/hyprlock"
-    target="$cache_dir/current-wallpaper"
-    wallpaper=""
+  mkInterruptBindLine =
+    mod: key: "    bindn = ${mod}, ${key}, global, quickshell:searchToggleReleaseInterrupt";
 
-    if [ -f "$config_file" ]; then
-      wallpaper="$(${pkgs.jq}/bin/jq -r '.background.wallpaperPath // empty' "$config_file" 2>/dev/null || true)"
-    fi
+  workspaceInterruptBinds = lib.concatStringsSep "\n" (
+    (builtins.map (key: mkInterruptBindLine "$mod" key) workspaceKeycodes)
+    ++ (builtins.map (key: mkInterruptBindLine "$shiftMod" key) workspaceKeycodes)
+  );
 
-    mkdir -p "$cache_dir"
+  workspaceDispatchBinds = lib.concatStringsSep "\n" (
+    builtins.genList
+      (i:
+        let
+          ws = toString (i + 1);
+          key = "code:1${toString i}";
+        in
+        "    bind = $mod, ${key}, workspace, ${ws}\n    bind = $shiftMod, ${key}, movetoworkspace, ${ws}"
+      )
+      9
+  );
 
-    if [ -n "$wallpaper" ] && [ -f "$wallpaper" ]; then
-      ${pkgs.coreutils}/bin/ln -sfn "$wallpaper" "$target"
-      ${pkgs.libnotify}/bin/notify-send -a "hyprlock" -u low -t 1200 "Lock wallpaper synced" "$wallpaper"
-    else
-      ${pkgs.libnotify}/bin/notify-send -a "hyprlock" -u low -t 1200 "Lock wallpaper sync" "No current wallpaper path was found"
-    fi
+  hyprIdleConf = ''
+    $lock_cmd = bash -lc 'hyprctl dispatch global quickshell:lock || qs -c "$HOME/.config/quickshell/ii" ipc call lock activate'
+    $suspend_cmd = systemctl suspend || loginctl suspend
+
+    general {
+        lock_cmd = $lock_cmd
+        before_sleep_cmd = $lock_cmd
+        after_sleep_cmd = hyprctl dispatch global quickshell:lockFocus
+        inhibit_sleep = 3
+    }
+
+    listener {
+        timeout = 300
+        on-timeout = $lock_cmd
+    }
+
+    listener {
+        timeout = 600
+        on-timeout = hyprctl dispatch dpms off
+        on-resume = hyprctl dispatch dpms on
+    }
+
+    listener {
+        timeout = 900
+        on-timeout = $suspend_cmd
+    }
   '';
 
   hyprMainKeybinds = ''
@@ -282,6 +312,7 @@ let
     bindn = $shiftMod, E, global, quickshell:searchToggleReleaseInterrupt
     bindn = $shiftMod, P, global, quickshell:searchToggleReleaseInterrupt
     bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt
+    bindn = $shiftMod, Tab, global, quickshell:searchToggleReleaseInterrupt
     bindn = $shiftMod, Left, global, quickshell:searchToggleReleaseInterrupt
     bindn = $shiftMod, Right, global, quickshell:searchToggleReleaseInterrupt
     bindn = $shiftMod, Up, global, quickshell:searchToggleReleaseInterrupt
@@ -290,24 +321,7 @@ let
 
     bindn = $altMod, P, global, quickshell:searchToggleReleaseInterrupt
 
-    bindn = $mod, code:10, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:11, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:12, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:13, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:14, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:15, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:16, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:17, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mod, code:18, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:10, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:11, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:12, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:13, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:14, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:15, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:16, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:17, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, code:18, global, quickshell:searchToggleReleaseInterrupt
+${workspaceInterruptBinds}
 
     # Apps and shell entry points.
     bind = $mainMod, Q, killactive,
@@ -315,20 +329,20 @@ let
     bind = $mainMod, F, exec, file-manager
     bind = $mainMod, V, togglefloating,
     bind = $mainMod, J, togglesplit,
-    bind = $mainMod, B, exec, zen
+    bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox
     bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
     bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
     bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
-    bind = $mainMod, Tab, global, quickshell:overviewWorkspacesToggle
-    bind = CTRL, L, exec, ${pkgs.hyprlock}/bin/hyprlock
-    bind = $mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock
+    bind = $mainMod, Tab, submap, resize
+    bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle
+    bind = CTRL, L, global, quickshell:lock
+    bind = $mainMod, L, global, quickshell:lock
 
     # Utilities.
     bind = $shiftMod, C, exec, clipboard
     bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
     bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle
     bind = $shiftMod, P, exec, wallpaper-random
-    bind = $altMod, P, exec, sync-lock-wallpaper
     bind = $mod, F2, exec, night-shift
 
     # Window focus and movement.
@@ -346,8 +360,8 @@ let
     bindm = $mod, Control_L, movewindow
     bindm = $mod, ALT_L, resizewindow
 
-    # Keep End-4's workspace overview on Super+Tab and move resize mode onto a
-    # dedicated Super+Shift chord instead.
+    # Super+Tab enters resize mode.
+    # End-4 workspace overview is moved to Super+Shift+Tab.
     bind = $shiftMod, R, submap, resize
     submap = resize
     binde = , Left, resizeactive, -40 0
@@ -370,31 +384,14 @@ let
     bind = $shiftMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
 
     # Workspaces.
-    bind = $mod, code:10, workspace, 1
-    bind = $mod, code:11, workspace, 2
-    bind = $mod, code:12, workspace, 3
-    bind = $mod, code:13, workspace, 4
-    bind = $mod, code:14, workspace, 5
-    bind = $mod, code:15, workspace, 6
-    bind = $mod, code:16, workspace, 7
-    bind = $mod, code:17, workspace, 8
-    bind = $mod, code:18, workspace, 9
-    bind = $shiftMod, code:10, movetoworkspace, 1
-    bind = $shiftMod, code:11, movetoworkspace, 2
-    bind = $shiftMod, code:12, movetoworkspace, 3
-    bind = $shiftMod, code:13, movetoworkspace, 4
-    bind = $shiftMod, code:14, movetoworkspace, 5
-    bind = $shiftMod, code:15, movetoworkspace, 6
-    bind = $shiftMod, code:16, movetoworkspace, 7
-    bind = $shiftMod, code:17, movetoworkspace, 8
-    bind = $shiftMod, code:18, movetoworkspace, 9
+${workspaceDispatchBinds}
 
     # Hardware keys.
     bindl = , XF86AudioMute, exec, sound-toggle
     bindl = , XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause
     bindl = , XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next
     bindl = , XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous
-    bindl = , switch:Lid Switch, exec, ${pkgs.hyprlock}/bin/hyprlock
+    bindl = , switch:Lid Switch, global, quickshell:lock
 
     bindle = , XF86AudioRaiseVolume, exec, sound-up
     bindle = , XF86AudioLowerVolume, exec, sound-down
@@ -439,6 +436,22 @@ let
         workspace_swipe_create_new = true
     }
 
+    misc {
+        # Disable panel VRR to avoid intermittent flicker on this internal eDP.
+        vrr = 0
+    }
+
+    render {
+        # Keep scanout path conservative for hybrid graphics stability.
+        direct_scanout = false
+    }
+
+    cursor {
+        # On some hybrid/NVIDIA laptops this removes visible cursor-related
+        # flicker/artifacts under Wayland compositors.
+        no_hardware_cursors = true
+    }
+
     decoration {
         rounding = 8
         dim_inactive = false
@@ -474,7 +487,7 @@ let
   hyprCustomMonitors = ''
     # Pin the internal panel to its native mode so Hyprland does not soften the
     # session with a fallback mode.
-    monitor = eDP-1, 1920x1080@144, 0x0, 1
+    monitor = eDP-1, 1920x1080@144, 0x0, 1, vrr, 0
   '';
 in
 {
@@ -496,7 +509,6 @@ in
       fileManager
       wallpaperSwitch
       wallpaperRandom
-      syncLockWallpaper
     ];
 
     # The soymou/illogical-flake manages most of Hyprland; keep overrides in custom/*.
@@ -514,6 +526,10 @@ in
 
     xdg.configFile."hypr/hyprland/execs.conf".source = lib.mkForce (
       pkgs.writeText "hypr-hyprland-execs.conf" hyprPatchedExecs
+    );
+
+    xdg.configFile."hypr/hypridle.conf".source = lib.mkForce (
+      pkgs.writeText "hypr-hypridle.conf" hyprIdleConf
     );
 
     xdg.configFile."hypr/monitors.conf".source = lib.mkForce (

@@ -38,14 +38,17 @@ in
       "threadirqs"
       "mitigations=off"
       "nvidia-drm.modeset=1"
+      # Laptop eDP flicker mitigation: PSR/FBC can cause intermittent flashing
+      # on some Intel panels, especially at high refresh.
+      "i915.enable_psr=0"
+      "i915.enable_fbc=0"
+      "i915.enable_dc=0"
     ]
     ++ lib.optionals isMax [
       "intel_idle.max_cstate=1"
-      "i915.enable_psr=0"
     ]
     ++ lib.optionals (!isMax) [
       "intel_idle.max_cstate=9"
-      "i915.enable_psr=1"
     ];
 
     boot.kernel.sysctl = {
@@ -66,18 +69,20 @@ in
       enable = true;
       settings = {
         # Alder Lake on this machine exposes only: performance, powersave.
-        CPU_SCALING_GOVERNOR_ON_AC = if isMax then "performance" else "powersave";
+        CPU_SCALING_GOVERNOR_ON_AC = if isCool then "powersave" else "performance";
         CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
-        CPU_BOOST_ON_AC = if isMax then 1 else 0;
+        CPU_BOOST_ON_AC = if isCool then 0 else 1;
         CPU_BOOST_ON_BAT = 0;
         CPU_MAX_PERF_ON_AC =
           if isMax then
             100
           else if isBalanced then
-            85
+            95
           else
-            65;
+            70;
         CPU_MAX_PERF_ON_BAT = if isCool then 45 else 60;
+        CPU_ENERGY_PERF_POLICY_ON_AC = if isCool then "power" else "performance";
+        CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
         PLATFORM_PROFILE_ON_AC =
           if isMax then
             "performance"
@@ -88,12 +93,18 @@ in
         PLATFORM_PROFILE_ON_BAT = "low-power";
         RUNTIME_PM_ON_AC = if isMax then "on" else "auto";
         RUNTIME_PM_ON_BAT = "auto";
-        PCIE_ASPM_ON_AC = if isMax then "default" else "powersupersave";
+        PCIE_ASPM_ON_AC = if isCool then "powersupersave" else "default";
         PCIE_ASPM_ON_BAT = "powersupersave";
       };
     };
 
     systemd.oomd.enable = true;
+
+    services.ananicy = {
+      enable = true;
+      package = pkgs.ananicy-cpp;
+      rulesProvider = pkgs.ananicy-cpp;
+    };
 
     environment.systemPackages = [
       (pkgs.writeShellScriptBin "x15-thermals" ''

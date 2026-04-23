@@ -42,6 +42,18 @@ let
                 's|^    matugen .*|    matugen --source-color-index 0 --prefer closest-to-fallback "''${matugen_args[@]}"|' \
                 "$out/ii/scripts/colors/switchwall.sh"
 
+              sed -i \
+                's|interval: 200|interval: 1000|' \
+                "$out/ii/services/TimerService.qml"
+
+              sed -i \
+                's|Quickshell.execDetached(\\["loginctl", "lock-session"\\]);|GlobalStates.screenLocked = true;|' \
+                "$out/ii/modules/common/functions/Session.qml"
+
+              sed -i \
+                '/function lock() {/,/^    }/c\    function lock() {\n        GlobalStates.screenLocked = true;\n    }' \
+                "$out/ii/modules/common/panels/lock/LockScreen.qml"
+
               patchShebangs "$out"
       '';
 
@@ -66,8 +78,8 @@ let
 
     background.parallax = {
       enableSidebar = false;
-      enableWorkspace = true;
-      workspaceZoom = 1.03;
+      enableWorkspace = false;
+      workspaceZoom = 1.0;
     };
 
     bar.utilButtons = {
@@ -77,7 +89,7 @@ let
     bar.weather = {
       enable = true;
       enableGPS = false;
-      city = "Rishikesh, India 249204";
+      city = "Rishikesh, Uttarakhand, India 249204";
       useUSCS = false;
       fetchInterval = 10;
     };
@@ -96,14 +108,19 @@ let
       extraZoom = 1.05;
       radius = 64;
     };
+    lock.useHyprlock = false;
 
-    resources.updateInterval = 5000;
+    resources = {
+      updateInterval = 10000;
+      historyLength = 30;
+    };
     sidebar.keepRightSidebarLoaded = false;
 
     time = {
       dateFormat = "ddd, dd/MM";
       dateWithYearFormat = "dd/MM/yyyy";
       format = "hh:mm AP";
+      pomodoro.focus = 2700;
       secondPrecision = false;
       shortDateFormat = "dd/MM";
     };
@@ -146,6 +163,46 @@ in
           mv "$tmp" "$target"
         '';
 
+    home.activation.syncIllogicalWeatherLocation =
+      lib.hm.dag.entryAfter [ "mergeIllogicalImpulseSettings" ]
+        ''
+          set -euo pipefail
+
+          target="$HOME/.config/illogical-impulse/config.json"
+          [ -s "$target" ] || exit 0
+
+          # Use a public geolocation endpoint to keep weather location aligned
+          # with the machine's current network location.
+          geo_json="$(${pkgs.curl}/bin/curl -fsSL --retry 2 --retry-delay 1 --max-time 8 https://ipapi.co/json/ 2>/dev/null || true)"
+          [ -n "$geo_json" ] || exit 0
+
+          extract_field() {
+            printf '%s' "$geo_json" | ${pkgs.jq}/bin/jq -r "$1 // empty" 2>/dev/null || true
+          }
+
+          city="$(extract_field '.city')"
+          region="$(extract_field '.region')"
+          postal="$(extract_field '.postal')"
+          country="$(extract_field '.country_name')"
+
+          [ -n "$city" ] || exit 0
+          [ -n "$country" ] || exit 0
+
+          weather_city="$city"
+          [ -n "$region" ] && weather_city="$weather_city, $region"
+          weather_city="$weather_city, $country"
+          [ -n "$postal" ] && weather_city="$weather_city $postal"
+
+          tmp="$(${pkgs.coreutils}/bin/mktemp)"
+          if ${pkgs.jq}/bin/jq --arg city "$weather_city" \
+            '.bar.weather.city = $city | .bar.weather.enable = true | .bar.weather.enableGPS = false' \
+            "$target" > "$tmp"; then
+            mv "$tmp" "$target"
+          else
+            rm -f "$tmp"
+          fi
+        '';
+
     home.activation.prepareIllogicalImpulseMutableThemeOutputs =
       lib.hm.dag.entryAfter [ "linkGeneration" ]
         ''
@@ -173,30 +230,27 @@ in
 
                     copy_mutable_dir "${dotfilesSource}/dots/.config/fuzzel" "$HOME/.config/fuzzel"
                     copy_mutable_dir "${dotfilesSource}/dots/.config/hypr/custom/scripts" "$HOME/.config/hypr/custom/scripts"
-          copy_mutable_dir "${dotfilesSource}/dots/.config/hypr/hyprlock" "$HOME/.config/hypr/hyprlock"
           copy_mutable_dir "${dotfilesSource}/dots/.config/matugen" "$HOME/.config/matugen"
           copy_mutable_file "${dotfilesSource}/dots/.config/hypr/hyprland/colors.conf" "$HOME/.config/hypr/hyprland/colors.conf"
           copy_mutable_file "${gtk4CssSeed}" "$HOME/.config/gtk-4.0/gtk.css"
           ln -sfn "$HOME/.local/state/quickshell/user/generated/colors.json" "$HOME/.config/matugen/colors.json"
         '';
 
-    home.activation.bootstrapQuickshellUserState =
-      lib.hm.dag.entryAfter [ "linkGeneration" ]
-        ''
-          set -euo pipefail
+    home.activation.bootstrapQuickshellUserState = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      set -euo pipefail
 
-          state_dir="$HOME/.local/state/quickshell/user"
-          todo_file="$state_dir/todo.json"
-          notes_file="$state_dir/notes.txt"
+      state_dir="$HOME/.local/state/quickshell/user"
+      todo_file="$state_dir/todo.json"
+      notes_file="$state_dir/notes.txt"
 
-          mkdir -p "$state_dir"
+      mkdir -p "$state_dir"
 
-          if [ ! -s "$todo_file" ] || ! ${pkgs.jq}/bin/jq -e 'type == "array"' "$todo_file" >/dev/null 2>&1; then
-            printf '[]\n' > "$todo_file"
-          fi
+      if [ ! -s "$todo_file" ] || ! ${pkgs.jq}/bin/jq -e 'type == "array"' "$todo_file" >/dev/null 2>&1; then
+        printf '[]\n' > "$todo_file"
+      fi
 
-          touch "$notes_file"
-        '';
+      touch "$notes_file"
+    '';
 
     home.activation.bootstrapMatugenDark =
       lib.hm.dag.entryAfter

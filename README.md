@@ -20,21 +20,23 @@ If you are new to this repo, use this quick loop:
 - Color pipeline: `matugen image <wallpaper> --mode dark --source-color-index 0`
 - Portals: `xdg-desktop-portal-hyprland` only
 - Display: explicit `eDP-1 = 1920x1080@144`
-- Perf defaults: QuickShell-only blur, `QSG_RENDER_LOOP=basic`, `zramSwap.enable=true`
+- Perf defaults: QuickShell-only blur, static workspace wallpaper, `QSG_RENDER_LOOP=basic`, `zramSwap.enable=true`
 
 ## Visual Map
 
 ```mermaid
 flowchart TD
     A[Need to change behavior] --> B{What are you changing?}
-    B -->|Bindings / gestures| C[home/hyprland.nix]
-    B -->|End-4 UI settings| D[home/illogical-settings.nix]
-    B -->|App defaults / Open With| E[home/mimeapps.nix]
+    B -->|Host / services| C[hosts/x15xs/default.nix]
+    B -->|User / Home Manager| D[users/asura/default.nix]
+    B -->|Bindings / gestures| E[home/hyprland.nix]
+    B -->|App defaults / Open With| J[home/mimeapps.nix]
     B -->|Browser look + defaults| F[home/browser.nix]
     B -->|IDE toolchain| G[home/ide.nix]
     C --> H[sudo nixos-rebuild switch --flake /etc/nixos#x15xs]
     D --> H
     E --> H
+    J --> H
     F --> H
     G --> H
     H --> I[nix flake check + pytest]
@@ -60,12 +62,14 @@ No runtime `git clone` is used.
 ## Source Of Truth
 
 - [flake.nix](./flake.nix): inputs and overlays
-- [configuration.nix](./configuration.nix): host config
+- [hosts/x15xs/default.nix](./hosts/x15xs/default.nix): host config entrypoint
+- [users/asura/default.nix](./users/asura/default.nix): Home Manager entrypoint
+- [configuration.nix](./configuration.nix): compatibility shim to the host folder entrypoint
 - [home/illogical-impulse-module.nix](./home/illogical-impulse-module.nix): local wrapper around `illogical-flake`
 - [home/illogical-settings.nix](./home/illogical-settings.nix): end-4 settings, writable theme outputs, dark-mode bootstrap
 - [home/end4-overrides/Todo.qml](./home/end4-overrides/Todo.qml): local QuickShell todo override with safer JSON loading and persistence
 - [home/hyprland.nix](./home/hyprland.nix): layout, bindings, perf-sensitive Hyprland overrides
-- [home/browser.nix](./home/browser.nix): Zen/Brave browser ownership, default browser handlers, Brave profile tuning
+- [home/browser.nix](./home/browser.nix): Firefox + Chrome + Zen browser ownership and profile tuning
 - [home/ide.nix](./home/ide.nix): VS Code/Cursor/Kiro/Antigravity ownership and shared IDE settings
 - [home/mimeapps.nix](./home/mimeapps.nix): writable MIME defaults and file-manager/open-with behavior
 - [HYPRLAND_CONTROLS.md](./HYPRLAND_CONTROLS.md): local control map for navigation, resize mode, and workspace travel
@@ -88,9 +92,12 @@ Persistent end-4 defaults are merged into `~/.config/illogical-impulse/config.js
 | UI language | `language.ui = "en_US"` |
 | Calendar locale | `calendar.locale = "en-GB"` |
 | Clock format | `time.format = "hh:mm AP"` |
-| Weather city | `bar.weather.city = "Rishikesh, India 249204"` |
+| Pomodoro focus | `time.pomodoro.focus = 2700` (`45m`) |
+| Weather city | auto-synced from current public IP geolocation (`ipapi.co`) at Home Manager activation, fallback `Rishikesh, Uttarakhand, India 249204` |
 | Sidebar loading | `sidebar.keepRightSidebarLoaded = false` |
-| Wallpaper zoom | `background.parallax.workspaceZoom = 1.03` |
+| Wallpaper parallax | `background.parallax.enableWorkspace = false` |
+| Shell resource polling | `resources.updateInterval = 10000` |
+| Lock provider | `lock.useHyprlock = false` |
 | Lock blur | `lock.blur.radius = 64` |
 
 QuickShell state is bootstrapped declaratively in `~/.local/state/quickshell/user`, including `todo.json` and `notes.txt`.
@@ -102,20 +109,19 @@ Mutable generated outputs are copied or linked into:
 - `~/.config/matugen`
 - `~/.config/fuzzel`
 - `~/.config/hypr/hyprland/colors.conf`
-- `~/.config/hypr/hyprlock`
 - `~/.config/hypr/custom/scripts`
 - `~/.config/gtk-4.0/gtk.css`
 
 ## Apps
 
-- Browsers: Zen Browser and Brave are installed declaratively; Firefox is removed from the active Home Manager profile.
-- Web defaults: Zen Browser is the default web handler for `http`, `https`, and `text/html`.
+- Browsers: Firefox ships as the themed primary browser, Google Chrome is available for Chromium compatibility, and Zen Browser stays installed as an alternate profile/browser.
+- Web defaults: Firefox is the default web handler for `http`, `https`, and `text/html`.
 - IDEs: VS Code `1.109.2`, Cursor `2.4.31`, Kiro `0.9.2`, and Antigravity `1.16.5` come from the pinned unstable input set through Nixpkgs and are tuned by [home/ide.nix](./home/ide.nix).
 - Notebook runtime: IDE notebooks now default to a declarative local Python interpreter that includes `pip` + `ipykernel` (via [home/ide.nix](./home/ide.nix)) so Jupyter cell execution works out of the box.
 - Python/DS tooling: `conda` (Anaconda-compatible workflow), `jupyterlab`, and `uv` are installed declaratively via [home/packages.nix](./home/packages.nix).
-- AI tooling: `claude-code` (CLI agent) and `ollama` (CLI client) are installed declaratively; the local Ollama CUDA service + Open WebUI stack remains managed by [modules/ollama.nix](./modules/ollama.nix).
+- AI tooling: `claude-code` (CLI agent) and `ollama` (CLI client) are installed declaratively; the local Ollama CUDA service remains managed by [modules/ollama.nix](./modules/ollama.nix), with Open WebUI disabled by default to keep idle memory lower.
 - GUI file managers: Nemo is kept as the single primary GUI file manager; redundant `nautilus` and `thunar` installs were removed.
-- Nix maintenance: Limine natively shows only the latest `7` system generations, daily garbage collection deletes paths older than `7d`, and store optimization stays enabled.
+- Nix maintenance: Limine natively shows only the latest `7` system generations, weekly garbage collection deletes paths older than `7d`, and store optimization stays enabled.
 - Boot layout: the active Limine ESP is `nvme0n1p1` (`BB34-5262`), while the Windows EFI files live on `nvme1n1p1` (`D85E-0D8D`) and are targeted by GUID from Limine.
 
 ## Key Bindings Quick Reference
@@ -123,12 +129,13 @@ Mutable generated outputs are copied or linked into:
 | Action | Binding |
 | --- | --- |
 | Open launcher | `tap/release Super` |
-| Workspace overview | `Super+Tab` |
-| Resize mode | `Super+Shift+R` |
+| Lock screen | `Super+L` or `Ctrl+L` (QuickShell) |
+| Resize mode | `Super+Tab` or `Super+Shift+R` |
+| Workspace overview | `Super+Shift+Tab` |
 | Open wallpaper selector | `Super+P` |
 | Random wallpaper | `Super+Shift+P` |
-| Sync lock wallpaper | `Super+Alt+P` |
 | File manager | `Super+F` (Nemo) |
+| Browser | `Super+B` (Firefox) |
 | Toggle floating | `Super+V` |
 | Toggle split | `Super+J` (toggle the current dwindle split) |
 | Move focus | `Super+Left/Right/Up/Down` |
@@ -143,6 +150,7 @@ Mutable generated outputs are copied or linked into:
 
 - Hyprland uses `general.layout = dwindle` with `dwindle.preserve_split = true` and `dwindle.precise_mouse_move = true`.
 - The local module overrides `hypr/hyprland/keybinds.conf` directly to prevent upstream End-4 collisions.
+- The local module owns `hypr/hypridle.conf` too, and idle/suspend locking is routed to QuickShell instead of Hyprlock.
 - `custom/keybinds.conf` is intentionally empty to keep one declarative binding source.
 - Resize mode returns cleanly to the global submap.
 - `hypr/monitors.conf` pins the internal panel to `1920x1080@144`.
@@ -170,4 +178,4 @@ nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
 - Hyprland team for [`Hyprland`](https://github.com/hyprwm/Hyprland).
 - outfoxxed + contributors for [`QuickShell`](https://git.outfoxxed.me/quickshell/quickshell).
 - InioX for [`matugen`](https://github.com/InioX/matugen).
-- Zen Browser and Brave projects for the browser experience this config tunes.
+- Firefox, Google Chrome, and Zen Browser projects for the browser experience this config tunes.
