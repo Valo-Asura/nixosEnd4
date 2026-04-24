@@ -35,9 +35,6 @@ in
       # Nix and AI tooling.
       ollama
       (pkgs."claude-code")
-      python3
-      python3Packages.conda
-      python3Packages.jupyterlab
 
       # Desktop helpers.
       networkmanager
