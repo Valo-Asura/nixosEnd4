@@ -6,14 +6,23 @@
 
 {
   imports = [
-    ../../home/packages.nix
-    ../../home/browser.nix
-    ../../home/ide.nix
-    ../../home/mimeapps.nix
-    ../../home/git.nix
-    ../../home/yazi.nix
-    ../../home/nanobot.nix
-    ../../home/hyprland.nix
+    # Shared base tooling.
+    ../../home/core/packages.nix
+
+    # User-facing applications.
+    ../../home/apps/browser.nix
+    ../../home/apps/mimeapps.nix
+    ../../home/apps/yazi.nix
+
+    # Development workflow.
+    ../../home/dev/git.nix
+    ../../home/dev/ide.nix
+    ../../home/dev/nanobot.nix
+
+    # Desktop/session behavior.
+    ../../home/desktop/hyprland.nix
+
+    # Shell environment.
     ../../home/shell/base.nix
     ../../home/shell/zsh.nix
   ];

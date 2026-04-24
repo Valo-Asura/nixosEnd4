@@ -60,11 +60,15 @@ let
     {
       desktop = "vlc.desktop";
       mimes = [
+        "audio/flac"
+        "audio/mp4"
         "video/mp4"
         "video/webm"
+        "video/quicktime"
+        "video/x-msvideo"
         "video/x-matroska"
         "audio/mpeg"
-        "audio/flac"
+        "audio/ogg"
         "audio/x-wav"
       ];
     }

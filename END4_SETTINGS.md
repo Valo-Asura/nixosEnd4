@@ -2,7 +2,7 @@
 
 This flake keeps end-4 / Illogical Impulse settings in two layers:
 
-- Nix-owned defaults live in [home/illogical-settings.nix](./home/illogical-settings.nix).
+- Nix-owned defaults live in [home/desktop/end4/settings.nix](./home/desktop/end4/settings.nix).
 - Runtime state lives in `~/.config/illogical-impulse/config.json`.
 
 ## Core Values
@@ -28,6 +28,7 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 - `lock.blur.extraZoom = 1.05`
 - `lock.blur.radius = 64`
 - `lock.useHyprlock = false`
+- `bar.utilButtons.showChargeLimitToggle = true`
 - `resources.updateInterval = 10000`
 - `resources.historyLength = 30`
 - `sidebar.keepRightSidebarLoaded = false`
@@ -47,7 +48,7 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 
 - Home Manager bootstraps `~/.local/state/quickshell/user/todo.json` as a writable JSON array.
 - Home Manager bootstraps `~/.local/state/quickshell/user/notes.txt` as a writable text file.
-- The local [home/end4-overrides/Todo.qml](./home/end4-overrides/Todo.qml) override normalizes malformed todo entries instead of letting the widget break on bad JSON.
+- The local [home/desktop/end4/overrides/Todo.qml](./home/desktop/end4/overrides/Todo.qml) override normalizes malformed todo entries instead of letting the widget break on bad JSON.
 
 ## Workspace And Display Behavior
 
@@ -61,6 +62,12 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 - QuickShell/PAM is the primary lockscreen provider.
 - Local Hyprland and Hypridle wiring call QuickShell lock directly.
 - Hyprlock is not part of the active lock path anymore.
+
+## Battery Care
+
+- A QuickShell bar utility button for battery care is enabled by default.
+- The system restores a `90%` stop-charge target on supported backends.
+- On hardware without a writable charge-limit backend, the button stays visible and reports that limitation instead of pretending to work.
 
 ## JSON Examples
 
@@ -109,6 +116,9 @@ Use the end-4 settings UI if you want, or edit `~/.config/illogical-impulse/conf
     "historyLength": 30
   },
   "bar": {
+    "utilButtons": {
+      "showChargeLimitToggle": true
+    },
     "weather": {
       "enable": true,
       "enableGPS": false,

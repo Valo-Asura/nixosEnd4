@@ -47,15 +47,21 @@ def test_nix_files_are_readable():
         "flake.nix",
         "configuration.nix",
         "hosts/x15xs/default.nix",
+        "modules/battery-care.nix",
         "modules/portal.nix",
-        "home/home.nix",
         "users/asura/default.nix",
-        "home/browser.nix",
-        "home/ide.nix",
-        "home/mimeapps.nix",
-        "home/hyprland.nix",
-        "home/illogical-settings.nix",
-        "home/end4-overrides/Todo.qml",
+        "home/apps/browser.nix",
+        "home/apps/mimeapps.nix",
+        "home/apps/yazi.nix",
+        "home/core/packages.nix",
+        "home/dev/git.nix",
+        "home/dev/ide.nix",
+        "home/dev/nanobot.nix",
+        "home/desktop/hyprland.nix",
+        "home/desktop/end4/module.nix",
+        "home/desktop/end4/settings.nix",
+        "home/desktop/end4/overrides/ChargeLimit.qml",
+        "home/desktop/end4/overrides/Todo.qml",
     ]:
         assert read_file(rel)
 
@@ -72,10 +78,10 @@ def test_github_repository_scaffolding_exists():
 
 
 def test_legacy_and_unused_layers_are_removed():
+    assert not os.path.exists(nix_file_path("home/home.nix"))
     assert not os.path.exists(nix_file_path("home/niri.nix"))
     assert not os.path.exists(nix_file_path("home/noctalia.nix"))
-    assert not os.path.exists(nix_file_path("home/waybar/default.nix"))
-    assert not os.path.exists(nix_file_path("home/waybar/style.css"))
+    assert not os.path.exists(nix_file_path("home/waybar"))
     assert not os.path.exists(nix_file_path("home/shell/starship.toml"))
 
 
@@ -89,38 +95,37 @@ def test_flake_pins_the_target_stack():
         'inputs.quickshell.follows = "quickshell";',
         "./hosts/x15xs",
         "./users/asura",
-        "./home/illogical-impulse-module.nix",
+        "./home/desktop/end4/module.nix",
         "matugen = inputs.matugen.packages.",
     ]:
         assert contains_literal(flake, literal), f"Missing flake literal: {literal}"
 
 
 def test_wrapper_uses_local_package_qt_and_settings_layers():
-    wrapper = read_file("home/illogical-impulse-module.nix")
+    wrapper = read_file("home/desktop/end4/module.nix")
     for literal in [
-        "./illogical-packages-patched.nix",
-        "./illogical-qt-patched.nix",
-        "./illogical-settings.nix",
+        "./packages.nix",
+        "./qt.nix",
+        "./settings.nix",
         "features = {",
         'enable = mkEnableOption "Enable the Illogical Impulse Hyprland configuration";',
     ]:
         assert contains_literal(wrapper, literal), f"Missing wrapper literal: {literal}"
 
 
-def test_entrypoint_shims_forward_to_host_and_user_folders():
+def test_host_entrypoint_shim_forwards_to_host_folder():
     configuration = read_file("configuration.nix")
-    home_shim = read_file("home/home.nix")
     assert contains_literal(configuration, "import ./hosts/x15xs args")
-    assert contains_literal(home_shim, "import ../users/asura args")
+    assert not os.path.exists(nix_file_path("home/home.nix"))
 
 
 def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
     home = read_file("users/asura/default.nix")
     for literal in [
-        "../../home/hyprland.nix",
-        "../../home/browser.nix",
-        "../../home/ide.nix",
-        "../../home/mimeapps.nix",
+        "../../home/desktop/hyprland.nix",
+        "../../home/apps/browser.nix",
+        "../../home/dev/ide.nix",
+        "../../home/apps/mimeapps.nix",
         "stylix.enable = false;",
         'name = "Bibata-Modern-Classic";',
         'name = "adw-gtk3-dark";',
@@ -141,14 +146,14 @@ def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
 
 
 def test_browser_module_themes_firefox_and_configures_chrome():
-    browser = read_file("home/browser.nix")
+    browser = read_file("home/apps/browser.nix")
     for literal in [
         'enable = lib.mkEnableOption "browser package set and profile tuning";',
         "zen-browser",
         "google-chrome",
         "programs.firefox = {",
         "profiles.asura = {",
-        'default = "DuckDuckGo";',
+        'default = "ddg";',
         "toolkit.legacyUserProfileCustomizations.stylesheets",
         "--rose-base: #120b10;",
         "home.activation.configureChromeProfile",
@@ -160,7 +165,7 @@ def test_browser_module_themes_firefox_and_configures_chrome():
 
 
 def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
-    ide = read_file("home/ide.nix")
+    ide = read_file("home/dev/ide.nix")
     for literal in [
         'enable = lib.mkEnableOption "VS Code and related IDE tooling";',
         "code-cursor",
@@ -171,12 +176,28 @@ def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
         "installOtherIdeExtensions",
         "configureAllIdeNixSupport",
         "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.debugpy",
+        "ms-python.isort",
         "ms-toolsai.jupyter",
-        'wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;theme=GitHub Dark Dimmed"',
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "charliermarsh.ruff",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker",
+        "black",
+        "debugpy",
+        "ruff",
+        'wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v3"',
         '"workbench.colorTheme" == "GitHub Dark Dimmed"',
         '"window.commandCenter" == false',
         '"telemetry.telemetryLevel" == "off"',
         '"update.mode" == "none"',
+        '"python.languageServer" == "Pylance"',
+        '"python.analysis.typeCheckingMode" == "basic"',
+        '"ruff.nativeServer" == "on"',
+        '"editor.defaultFormatter": "ms-python.black-formatter"',
         'merge_settings "Code"',
         'merge_settings "Cursor"',
         'merge_settings "Kiro"',
@@ -186,7 +207,7 @@ def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
 
 
 def test_mimeapps_module_keeps_mimeapps_writable_and_seeds_defaults():
-    mimeapps = read_file("home/mimeapps.nix")
+    mimeapps = read_file("home/apps/mimeapps.nix")
     for literal in [
         'enable = lib.mkEnableOption "writable MIME defaults and file-manager helpers";',
         "seededMimeDefaults = [",
@@ -209,6 +230,8 @@ def test_mimeapps_module_keeps_mimeapps_writable_and_seeds_defaults():
         '"application/pdf"',
         '"application/zip"',
         '"video/mp4"',
+        '"audio/ogg"',
+        '"video/quicktime"',
         'xdg.configFile."mimeapps.list".enable = lib.mkForce false;',
         'xdg.dataFile."applications/mimeapps.list".enable = lib.mkForce false;',
         "home.activation.configureMimeApps",
@@ -221,10 +244,11 @@ def test_mimeapps_module_keeps_mimeapps_writable_and_seeds_defaults():
 
 
 def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
-    settings_nix = read_file("home/illogical-settings.nix")
+    settings_nix = read_file("home/desktop/end4/settings.nix")
     for literal in [
         "quickshell-patched-local",
-        './end4-overrides/Todo.qml',
+        './overrides/Todo.qml',
+        './overrides/ChargeLimit.qml',
         'chmod u+w "$STATE_DIR"/user/generated/terminal/sequences.txt',
         '"matugen".enable = lib.mkForce false;',
         '"fuzzel".enable = lib.mkForce false;',
@@ -253,6 +277,7 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "historyLength = 30;",
         "pomodoro.focus = 2700;",
         "keepRightSidebarLoaded = false;",
+        "showChargeLimitToggle = true;",
         "bar.weather = {",
         "enable = true;",
         "enableGPS = false;",
@@ -260,9 +285,13 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "useUSCS = false;",
         "fetchInterval = 10;",
         's|interval: 200|interval: 1000|',
+        "$out/ii/services/ChargeLimit.qml",
         "$out/ii/services/TimerService.qml",
         's|Quickshell.execDetached(\\\\["loginctl", "lock-session"\\\\]);|GlobalStates.screenLocked = true;|',
         "GlobalStates.screenLocked = true;",
+        "showChargeLimitToggle: false",
+        'text: Translation.tr("Charge limit toggle")',
+        "onClicked: ChargeLimit.toggle()",
         'state_dir="$HOME/.local/state/quickshell/user"',
         'todo_file="$state_dir/todo.json"',
         'notes_file="$state_dir/notes.txt"',
@@ -280,7 +309,7 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
 
 
 def test_local_todo_override_recovers_from_invalid_state():
-    todo_qml = read_file("home/end4-overrides/Todo.qml")
+    todo_qml = read_file("home/desktop/end4/overrides/Todo.qml")
     for literal in [
         "function normalizeItem(item)",
         "function normalizeList(candidate)",
@@ -297,8 +326,23 @@ def test_local_todo_override_recovers_from_invalid_state():
         assert contains_literal(todo_qml, literal), f"Missing todo override literal: {literal}"
 
 
+def test_charge_limit_service_reports_state_and_invokes_systemd_units():
+    charge_limit = read_file("home/desktop/end4/overrides/ChargeLimit.qml")
+    for literal in [
+        "property bool supported: false",
+        "property bool enabled: false",
+        "property bool desiredEnabled: false",
+        'command: [ "x15-charge-limit-status" ]',
+        'root.enabled ? "x15-charge-limit-disable.service" : "x15-charge-limit-enable.service"',
+        'notify-send',
+        'Battery charge limit',
+        "JSON.parse(text)",
+    ]:
+        assert contains_literal(charge_limit, literal), f"Missing charge-limit literal: {literal}"
+
+
 def test_local_qt_wrapper_uses_top_level_quickshell_and_basic_render_loop():
-    qt = read_file("home/illogical-qt-patched.nix")
+    qt = read_file("home/desktop/end4/qt.nix")
     for literal in [
         "qsPackage = inputs.quickshell.packages.",
         "libxcb = pkgs.libxcb;",
@@ -309,7 +353,7 @@ def test_local_qt_wrapper_uses_top_level_quickshell_and_basic_render_loop():
 
 
 def test_hyprland_overrides_replace_upstream_sources():
-    hyprland = read_file("home/hyprland.nix")
+    hyprland = read_file("home/desktop/hyprland.nix")
     for literal in [
         'xdg.configFile."hypr/custom/keybinds.conf".source = lib.mkForce',
         'xdg.configFile."hypr/hyprland/keybinds.conf".source = lib.mkForce',
@@ -324,7 +368,7 @@ def test_hyprland_overrides_replace_upstream_sources():
 
 
 def test_hyprland_uses_classic_layout_and_perf_friendly_rules():
-    hyprland = read_file("home/hyprland.nix")
+    hyprland = read_file("home/desktop/hyprland.nix")
     for literal in [
         '"gesture = 3, swipe, move,"',
         "monitor = eDP-1, 1920x1080@144, 0x0, 1",
@@ -356,7 +400,7 @@ def test_hyprland_uses_classic_layout_and_perf_friendly_rules():
 
 
 def test_hyprland_keymap_matches_requested_classic_binds():
-    hyprland = read_file("home/hyprland.nix")
+    hyprland = read_file("home/desktop/hyprland.nix")
     for literal in [
         "hyprMainKeybinds",
         '$mainMod = SUPER',
@@ -488,6 +532,9 @@ def test_hybrid_gpu_and_ollama_defaults_stay_resource_oriented():
         'keepAlive = "2m";',
         "guiEnable = false;",
         '"nvidia.NVreg_TemporaryFilePath=/var/tmp"',
+        "batteryCare = {",
+        "stopThreshold = 90;",
+        "defaultEnabled = true;",
     ]:
         assert contains_literal(configuration, literal), f"Missing configuration literal: {literal}"
 
@@ -512,8 +559,30 @@ def test_networking_error_noise_fixes_are_enabled():
         assert contains_literal(configuration, literal), f"Missing networking/runtime fix literal: {literal}"
 
 
+def test_battery_care_module_exposes_helpers_and_polkit_scope():
+    battery_care = read_file("modules/battery-care.nix")
+    for literal in [
+        'enable = lib.mkEnableOption "battery charge limit helpers";',
+        "default = 90;",
+        "default = true;",
+        'default = "asura";',
+        "x15-charge-limit-status",
+        "x15-charge-limitctl",
+        "x15-charge-limit-enable",
+        "x15-charge-limit-disable",
+        "x15-charge-limit-restore",
+        "charge_control_end_threshold",
+        "charging_profile",
+        "org.freedesktop.systemd1.manage-units",
+        'subject.user !== "${cfg.user}"',
+        "requestedStopThreshold",
+        "desiredEnabled",
+    ]:
+        assert contains_literal(battery_care, literal), f"Missing battery-care literal: {literal}"
+
+
 def test_vscode_settings_stay_mutable():
-    ide = read_file("home/ide.nix")
+    ide = read_file("home/dev/ide.nix")
     assert not_contains_literal(ide, "userSettings = {")
     assert contains_literal(
         ide,
@@ -524,13 +593,15 @@ def test_vscode_settings_stay_mutable():
 
 
 def test_packages_module_drops_duplicate_gui_file_managers():
-    packages = read_file("home/packages.nix")
+    packages = read_file("home/core/packages.nix")
     assert contains_literal(packages, "nemo")
     assert contains_literal(packages, "uv")
     assert contains_literal(packages, "ollama")
     assert contains_literal(packages, 'pkgs."claude-code"')
+    assert contains_literal(packages, "python3")
     assert contains_literal(packages, "python3Packages.conda")
     assert contains_literal(packages, "python3Packages.jupyterlab")
+    assert contains_literal(packages, "vlc")
     assert not_contains_literal(packages, "nautilus")
     assert not_contains_literal(packages, "thunar")
     assert not_contains_literal(packages, "programs.firefox")
@@ -562,7 +633,12 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(readme, "Open WebUI disabled by default")
     assert contains_literal(readme, "hosts/x15xs/default.nix")
     assert contains_literal(readme, "users/asura/default.nix")
-    assert contains_literal(readme, "VS Code `1.109.2`")
+    assert contains_literal(readme, "home/apps/mimeapps.nix")
+    assert contains_literal(readme, "home/desktop/end4/settings.nix")
+    assert contains_literal(readme, "VLC is installed declaratively")
+    assert contains_literal(readme, "battery-care target `90%`")
+    assert contains_literal(readme, "bar charge-limit button shown by default")
+    assert contains_literal(readme, "Python, Pylance, Black, isort, Ruff, Jupyter helpers, YAML, Docker")
     assert contains_literal(readme, "latest `7` system generations")
     assert contains_literal(readme, "weekly garbage collection")
     assert contains_literal(readme, '`time.format = "hh:mm AP"`')
@@ -576,6 +652,8 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(end4_settings, 'time.format = "hh:mm AP"')
     assert contains_literal(end4_settings, 'time.pomodoro.focus = 2700')
     assert contains_literal(end4_settings, 'lock.useHyprlock = false')
+    assert contains_literal(end4_settings, 'bar.utilButtons.showChargeLimitToggle = true')
+    assert contains_literal(end4_settings, "restores a `90%` stop-charge target")
     assert contains_literal(end4_settings, "QuickShell/PAM is the primary lockscreen provider")
     assert contains_literal(end4_settings, "Wallpapers below `1920x1080`")
     assert contains_literal(end4_settings, 'Rishikesh, Uttarakhand, India 249204')
@@ -589,6 +667,7 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(hyprland_controls, "tap/release Super")
     assert contains_literal(hyprland_controls, "lock with QuickShell")
     assert contains_literal(hyprland_controls, "launch Firefox")
+    assert contains_literal(hyprland_controls, "home/desktop/hyprland.nix")
     assert contains_literal(hyprland_controls, "hypr/hyprland/keybinds.conf")
     assert contains_literal(hyprland_controls, "custom/keybinds.conf")
     assert not_contains_literal(readme, "Super+W")

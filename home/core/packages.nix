@@ -15,6 +15,7 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = with pkgs; [
+      # Core CLI.
       eza
       bat
       fd
@@ -28,13 +29,17 @@ in
       bottom
       lazygit
       delta
-      yazi
       jq
       curl
+
+      # Nix and AI tooling.
       ollama
       (pkgs."claude-code")
+      python3
       python3Packages.conda
       python3Packages.jupyterlab
+
+      # Desktop helpers.
       networkmanager
       playerctl
       brightnessctl
@@ -51,10 +56,13 @@ in
       telegram-desktop
       wtype
       nemo
+      yazi
 
+      # Media.
       ani-cli
       vlc
 
+      # Terminals and theming.
       foot
       kitty
       dart-sass

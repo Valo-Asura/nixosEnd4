@@ -35,7 +35,7 @@ in
         name = "asura";
         search = {
           force = true;
-          default = "DuckDuckGo";
+          default = "ddg";
         };
         settings = {
           "app.shield.optoutstudies.enabled" = false;

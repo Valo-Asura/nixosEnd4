@@ -15,11 +15,11 @@ in
 {
   imports = [
     (import "${iiPath}/home-modules/fonts.nix" iiInputs)
-    ./illogical-packages-patched.nix
-    ./illogical-qt-patched.nix
+    ./packages.nix
+    ./qt.nix
     (import "${iiPath}/home-modules/environment.nix" iiInputs)
     (import "${iiPath}/home-modules/dotfiles.nix" iiInputs)
-    ./illogical-settings.nix
+    ./settings.nix
   ];
 
   options.programs.illogical-impulse = {

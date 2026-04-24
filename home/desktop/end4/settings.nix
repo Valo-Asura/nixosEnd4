@@ -27,7 +27,8 @@ let
       ''
               cp -r ${dotfilesSource}/dots/.config/quickshell $out
               chmod -R +w $out
-              cp ${./end4-overrides/Todo.qml} "$out/ii/services/Todo.qml"
+              cp ${./overrides/Todo.qml} "$out/ii/services/Todo.qml"
+              cp ${./overrides/ChargeLimit.qml} "$out/ii/services/ChargeLimit.qml"
 
               find "$out" -name "*.py" -print0 | xargs -0 sed -i \
                 's|^#!.*ILLOGICAL_IMPULSE_VIRTUAL_ENV.*|#!/usr/bin/env python3|'
@@ -53,6 +54,81 @@ let
               sed -i \
                 '/function lock() {/,/^    }/c\    function lock() {\n        GlobalStates.screenLocked = true;\n    }' \
                 "$out/ii/modules/common/panels/lock/LockScreen.qml"
+
+              sed -i \
+                's|property bool showPerformanceProfileToggle: false|property bool showPerformanceProfileToggle: false\
+                    property bool showChargeLimitToggle: false|' \
+                "$out/ii/modules/common/Config.qml"
+
+              sed -i \
+                '/text: Translation.tr("Performance Profile toggle")/,/}/c\            ConfigSwitch {\
+\                buttonIcon: "speed"\
+\                text: Translation.tr("Performance Profile toggle")\
+\                checked: Config.options.bar.utilButtons.showPerformanceProfileToggle\
+\                onCheckedChanged: {\
+\                    Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;\
+\                }\
+\            }\
+\            ConfigSwitch {\
+\                buttonIcon: "battery_6_bar"\
+\                text: Translation.tr("Charge limit toggle")\
+\                checked: Config.options.bar.utilButtons.showChargeLimitToggle\
+\                onCheckedChanged: {\
+\                    Config.options.bar.utilButtons.showChargeLimitToggle = checked;\
+\                }\
+\            }' \
+                "$out/ii/modules/settings/BarConfig.qml"
+
+              sed -i \
+                '/showPerformanceProfileToggle/,/^[[:space:]]*}/c\        Loader {\
+\            active: Config.options.bar.utilButtons.showPerformanceProfileToggle\
+\            visible: Config.options.bar.utilButtons.showPerformanceProfileToggle\
+\            sourceComponent: CircleUtilButton {\
+\                Layout.alignment: Qt.AlignVCenter\
+\                onClicked: event => {\
+\                    if (PowerProfiles.hasPerformanceProfile) {\
+\                        switch(PowerProfiles.profile) {\
+\                            case PowerProfile.PowerSaver: PowerProfiles.profile = PowerProfile.Balanced\
+\                            break;\
+\                            case PowerProfile.Balanced: PowerProfiles.profile = PowerProfile.Performance\
+\                            break;\
+\                            case PowerProfile.Performance: PowerProfiles.profile = PowerProfile.PowerSaver\
+\                            break;\
+\                        }\
+\                    } else {\
+\                        PowerProfiles.profile = PowerProfiles.profile == PowerProfile.Balanced ? PowerProfile.PowerSaver : PowerProfile.Balanced\
+\                    }\
+\                }\
+\                MaterialSymbol {\
+\                    horizontalAlignment: Qt.AlignHCenter\
+\                    fill: 0\
+\                    text: switch(PowerProfiles.profile) {\
+\                        case PowerProfile.PowerSaver: return "energy_savings_leaf"\
+\                        case PowerProfile.Balanced: return "airwave"\
+\                        case PowerProfile.Performance: return "local_fire_department"\
+\                    }\
+\                    iconSize: Appearance.font.pixelSize.large\
+\                    color: Appearance.colors.colOnLayer2\
+\                }\
+\            }\
+\        }\
+\
+\        Loader {\
+\            active: Config.options.bar.utilButtons.showChargeLimitToggle\
+\            visible: Config.options.bar.utilButtons.showChargeLimitToggle\
+\            sourceComponent: CircleUtilButton {\
+\                Layout.alignment: Qt.AlignVCenter\
+\                onClicked: ChargeLimit.toggle()\
+\                MaterialSymbol {\
+\                    horizontalAlignment: Qt.AlignHCenter\
+\                    fill: ChargeLimit.enabled ? 1 : 0\
+\                    text: !ChargeLimit.supported ? "battery_alert" : (ChargeLimit.enabled ? "battery_6_bar" : "battery_full")\
+\                    iconSize: Appearance.font.pixelSize.large\
+\                    color: ChargeLimit.supported ? Appearance.colors.colOnLayer2 : Appearance.m3colors.m3error\
+\                }\
+\            }\
+\        }' \
+                "$out/ii/modules/ii/bar/UtilButtons.qml"
 
               patchShebangs "$out"
       '';
@@ -83,6 +159,7 @@ let
     };
 
     bar.utilButtons = {
+      showChargeLimitToggle = true;
       showDarkModeToggle = true;
       showPerformanceProfileToggle = false;
     };

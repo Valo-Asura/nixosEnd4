@@ -96,7 +96,7 @@
                   inherit inputs hostname;
                 };
                 sharedModules = [
-                  ./home/illogical-impulse-module.nix
+                  ./home/desktop/end4/module.nix
                 ];
                 users.asura = import ./users/asura;
               };

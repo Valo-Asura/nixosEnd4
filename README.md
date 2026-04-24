@@ -20,7 +20,7 @@ If you are new to this repo, use this quick loop:
 - Color pipeline: `matugen image <wallpaper> --mode dark --source-color-index 0`
 - Portals: `xdg-desktop-portal-hyprland` only
 - Display: explicit `eDP-1 = 1920x1080@144`
-- Perf defaults: QuickShell-only blur, static workspace wallpaper, `QSG_RENDER_LOOP=basic`, `zramSwap.enable=true`
+- Perf defaults: QuickShell-only blur, static workspace wallpaper, `QSG_RENDER_LOOP=basic`, `zramSwap.enable=true`, battery-care target `90%` on supported backends
 
 ## Visual Map
 
@@ -29,10 +29,10 @@ flowchart TD
     A[Need to change behavior] --> B{What are you changing?}
     B -->|Host / services| C[hosts/x15xs/default.nix]
     B -->|User / Home Manager| D[users/asura/default.nix]
-    B -->|Bindings / gestures| E[home/hyprland.nix]
-    B -->|App defaults / Open With| J[home/mimeapps.nix]
-    B -->|Browser look + defaults| F[home/browser.nix]
-    B -->|IDE toolchain| G[home/ide.nix]
+    B -->|Bindings / gestures| E[home/desktop/hyprland.nix]
+    B -->|App defaults / Open With| J[home/apps/mimeapps.nix]
+    B -->|Browser look + defaults| F[home/apps/browser.nix]
+    B -->|IDE toolchain| G[home/dev/ide.nix]
     C --> H[sudo nixos-rebuild switch --flake /etc/nixos#x15xs]
     D --> H
     E --> H
@@ -65,13 +65,14 @@ No runtime `git clone` is used.
 - [hosts/x15xs/default.nix](./hosts/x15xs/default.nix): host config entrypoint
 - [users/asura/default.nix](./users/asura/default.nix): Home Manager entrypoint
 - [configuration.nix](./configuration.nix): compatibility shim to the host folder entrypoint
-- [home/illogical-impulse-module.nix](./home/illogical-impulse-module.nix): local wrapper around `illogical-flake`
-- [home/illogical-settings.nix](./home/illogical-settings.nix): end-4 settings, writable theme outputs, dark-mode bootstrap
-- [home/end4-overrides/Todo.qml](./home/end4-overrides/Todo.qml): local QuickShell todo override with safer JSON loading and persistence
-- [home/hyprland.nix](./home/hyprland.nix): layout, bindings, perf-sensitive Hyprland overrides
-- [home/browser.nix](./home/browser.nix): Firefox + Chrome + Zen browser ownership and profile tuning
-- [home/ide.nix](./home/ide.nix): VS Code/Cursor/Kiro/Antigravity ownership and shared IDE settings
-- [home/mimeapps.nix](./home/mimeapps.nix): writable MIME defaults and file-manager/open-with behavior
+- [modules/battery-care.nix](./modules/battery-care.nix): persistent battery-care helper and QuickShell-facing charge-limit backend
+- [home/core/packages.nix](./home/core/packages.nix): shared CLI, media, and desktop package set
+- [home/apps/](./home/apps): browser, MIME/default-app ownership, and Yazi
+- [home/dev/](./home/dev): Git, IDE, and Nanobot development tooling
+- [home/desktop/hyprland.nix](./home/desktop/hyprland.nix): layout, bindings, and perf-sensitive Hyprland overrides
+- [home/desktop/end4/module.nix](./home/desktop/end4/module.nix): local wrapper around `illogical-flake`
+- [home/desktop/end4/settings.nix](./home/desktop/end4/settings.nix): end-4 settings, writable theme outputs, and dark-mode bootstrap
+- [home/desktop/end4/overrides/Todo.qml](./home/desktop/end4/overrides/Todo.qml): local QuickShell todo override with safer JSON loading and persistence
 - [HYPRLAND_CONTROLS.md](./HYPRLAND_CONTROLS.md): local control map for navigation, resize mode, and workspace travel
 - [END4_SETTINGS.md](./END4_SETTINGS.md): end-4 / QuickShell settings reference
 
@@ -85,7 +86,7 @@ No runtime `git clone` is used.
 
 ## Essential Defaults
 
-Persistent end-4 defaults are merged into `~/.config/illogical-impulse/config.json` from [home/illogical-settings.nix](./home/illogical-settings.nix). Use that file for values you want to survive rebuilds.
+Persistent end-4 defaults are merged into `~/.config/illogical-impulse/config.json` from [home/desktop/end4/settings.nix](./home/desktop/end4/settings.nix). Use that file for values you want to survive rebuilds.
 
 | Setting | Value |
 | --- | --- |
@@ -99,6 +100,7 @@ Persistent end-4 defaults are merged into `~/.config/illogical-impulse/config.js
 | Shell resource polling | `resources.updateInterval = 10000` |
 | Lock provider | `lock.useHyprlock = false` |
 | Lock blur | `lock.blur.radius = 64` |
+| Battery care | bar charge-limit button shown by default, restore `90%` limit on supported backends |
 
 QuickShell state is bootstrapped declaratively in `~/.local/state/quickshell/user`, including `todo.json` and `notes.txt`.
 
@@ -114,11 +116,13 @@ Mutable generated outputs are copied or linked into:
 
 ## Apps
 
-- Browsers: Firefox ships as the themed primary browser, Google Chrome is available for Chromium compatibility, and Zen Browser stays installed as an alternate profile/browser.
+- Browsers: Firefox ships as the themed primary browser, Google Chrome is available for Chromium compatibility, and Zen Browser stays installed as an alternate browser.
 - Web defaults: Firefox is the default web handler for `http`, `https`, and `text/html`.
-- IDEs: VS Code `1.109.2`, Cursor `2.4.31`, Kiro `0.9.2`, and Antigravity `1.16.5` come from the pinned unstable input set through Nixpkgs and are tuned by [home/ide.nix](./home/ide.nix).
-- Notebook runtime: IDE notebooks now default to a declarative local Python interpreter that includes `pip` + `ipykernel` (via [home/ide.nix](./home/ide.nix)) so Jupyter cell execution works out of the box.
-- Python/DS tooling: `conda` (Anaconda-compatible workflow), `jupyterlab`, and `uv` are installed declaratively via [home/packages.nix](./home/packages.nix).
+- Media: VLC is installed declaratively and seeded as the default handler for common audio and video formats.
+- IDEs: VS Code, Cursor, Kiro, and Antigravity come from the pinned unstable input set through Nixpkgs and are tuned by [home/dev/ide.nix](./home/dev/ide.nix).
+- IDE extensions: the shared stack now includes Python, Pylance, Black, isort, Ruff, Jupyter helpers, YAML, Docker, and Rust/Nix tooling across VS Code, Cursor, Kiro, and Antigravity.
+- Notebook runtime: IDE notebooks now default to a declarative local Python interpreter that includes `black`, `debugpy`, `flake8`, `isort`, `ipykernel`, `jupyterlab`, `mypy`, `pylint`, `ruff`, and `pip` (via [home/dev/ide.nix](./home/dev/ide.nix)).
+- Python/DS tooling: `python3`, `conda` (Anaconda-compatible workflow), `jupyterlab`, and `uv` are installed declaratively via [home/core/packages.nix](./home/core/packages.nix).
 - AI tooling: `claude-code` (CLI agent) and `ollama` (CLI client) are installed declaratively; the local Ollama CUDA service remains managed by [modules/ollama.nix](./modules/ollama.nix), with Open WebUI disabled by default to keep idle memory lower.
 - GUI file managers: Nemo is kept as the single primary GUI file manager; redundant `nautilus` and `thunar` installs were removed.
 - Nix maintenance: Limine natively shows only the latest `7` system generations, weekly garbage collection deletes paths older than `7d`, and store optimization stays enabled.
@@ -154,7 +158,7 @@ Mutable generated outputs are copied or linked into:
 - `custom/keybinds.conf` is intentionally empty to keep one declarative binding source.
 - Resize mode returns cleanly to the global submap.
 - `hypr/monitors.conf` pins the internal panel to `1920x1080@144`.
-- [home/mimeapps.nix](./home/mimeapps.nix) keeps MIME defaults declarative and writes `mimeapps.list` as regular files so right-click `Open With` persists.
+- [home/apps/mimeapps.nix](./home/apps/mimeapps.nix) keeps MIME defaults declarative and writes `mimeapps.list` as regular files so right-click `Open With` persists.
 
 ## Daily Workflow
 

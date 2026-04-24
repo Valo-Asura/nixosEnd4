@@ -9,29 +9,54 @@ let
   cfg = config.modules.ide;
   jupyterPython = pkgs.python3.withPackages (
     ps: with ps; [
+      black
+      debugpy
+      flake8
+      isort
+      mypy
       pip
       ipykernel
       jupyterlab
+      pylint
+      ruff
     ]
   );
   vscodeExtensions = with pkgs.vscode-extensions; [
     bbenoist.nix
+    charliermarsh.ruff
     github.github-vscode-theme
     jnoortheen.nix-ide
     mkhl.direnv
+    ms-azuretools.vscode-docker
+    ms-python.black-formatter
+    ms-python.debugpy
+    ms-python.isort
     ms-python.python
+    ms-python.vscode-pylance
     ms-toolsai.jupyter
+    ms-toolsai.jupyter-keymap
+    ms-toolsai.jupyter-renderers
     pkief.material-icon-theme
+    redhat.vscode-yaml
     rust-lang.rust-analyzer
   ];
   ideExtensionIds = [
     "bbenoist.nix"
+    "charliermarsh.ruff"
     "github.github-vscode-theme"
     "jnoortheen.nix-ide"
     "mkhl.direnv"
+    "ms-azuretools.vscode-docker"
+    "ms-python.black-formatter"
+    "ms-python.debugpy"
+    "ms-python.isort"
     "ms-python.python"
+    "ms-python.vscode-pylance"
     "ms-toolsai.jupyter"
+    "ms-toolsai.jupyter-keymap"
+    "ms-toolsai.jupyter-renderers"
     "pkief.material-icon-theme"
+    "redhat.vscode-yaml"
     "rust-lang.rust-analyzer"
   ];
 in
@@ -65,7 +90,7 @@ in
     home.activation.installOtherIdeExtensions = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      marker="$state_dir/extensions-v2"
+      marker="$state_dir/extensions-v3"
       wanted='${lib.concatStringsSep "," ideExtensionIds}'
 
       mkdir -p "$state_dir"
@@ -95,8 +120,8 @@ in
     home.activation.configureAllIdeNixSupport = lib.hm.dag.entryAfter [ "installOtherIdeExtensions" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      marker="$state_dir/nix-settings-v2"
-      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;theme=GitHub Dark Dimmed"
+      marker="$state_dir/nix-settings-v3"
+      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v3"
 
       mkdir -p "$state_dir"
       settings_need_merge() {
@@ -123,7 +148,16 @@ in
             ."telemetry.telemetryLevel" == "off" and
             ."update.mode" == "none" and
             ."python.defaultInterpreterPath" == $python and
-            ."jupyter.jupyterServerType" == "local"
+            ."python.languageServer" == "Pylance" and
+            ."python.analysis.typeCheckingMode" == "basic" and
+            ."python.analysis.autoImportCompletions" == true and
+            ."python.testing.pytestEnabled" == true and
+            ."python.testing.unittestEnabled" == false and
+            ."ruff.nativeServer" == "on" and
+            ."jupyter.jupyterServerType" == "local" and
+            .["[python]"]["editor.defaultFormatter"] == "ms-python.black-formatter" and
+            .["[python]"]["editor.formatOnSave"] == true and
+            .["[python]"]["editor.codeActionsOnSave"]["source.organizeImports"] == "explicit"
           ' \
           "$settings" >/dev/null 2>&1 || return 0
 
@@ -162,6 +196,12 @@ in
             "telemetry.telemetryLevel": "off",
             "update.mode": "none",
             "python.defaultInterpreterPath": $python,
+            "python.languageServer": "Pylance",
+            "python.analysis.typeCheckingMode": "basic",
+            "python.analysis.autoImportCompletions": true,
+            "python.testing.pytestEnabled": true,
+            "python.testing.unittestEnabled": false,
+            "ruff.nativeServer": "on",
             "jupyter.jupyterServerType": "local",
             "extensions.autoCheckUpdates": false,
             "extensions.autoUpdate": false,
@@ -171,6 +211,14 @@ in
           | .["[nix]"] = ((.["[nix]"] // {}) + {
             "editor.defaultFormatter": "jnoortheen.nix-ide",
             "editor.formatOnSave": true
+          })
+          | .["[python]"] = ((.["[python]"] // {}) + {
+            "editor.defaultFormatter": "ms-python.black-formatter",
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+              "source.fixAll": "explicit",
+              "source.organizeImports": "explicit"
+            }
           })' \
           "$settings" > "$tmp"
 

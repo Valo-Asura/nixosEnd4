@@ -4,7 +4,7 @@ This file is the quickest map for local Hyprland behavior in this flake.
 
 ## Source Of Truth
 
-- [home/hyprland.nix](./home/hyprland.nix) owns the local Hyprland overrides.
+- [home/desktop/hyprland.nix](./home/desktop/hyprland.nix) owns the local Hyprland overrides.
 - [README.md](./README.md) is the high-level stack overview.
 - [END4_SETTINGS.md](./END4_SETTINGS.md) documents the end-4 / QuickShell settings layer.
 
@@ -61,9 +61,9 @@ This file is the quickest map for local Hyprland behavior in this flake.
 
 ## Why It Is Split This Way
 
-- Hyprland behavior is kept declarative in `home/hyprland.nix`.
+- Hyprland behavior is kept declarative in `home/desktop/hyprland.nix`.
 - The local module now owns `hypr/hyprland/keybinds.conf` directly, not just `custom/keybinds.conf`, so upstream End-4 shell binds cannot keep colliding underneath your map.
-- Runtime shell options stay in `~/.config/illogical-impulse/config.json`, with defaults managed from `home/illogical-settings.nix`.
+- Runtime shell options stay in `~/.config/illogical-impulse/config.json`, with defaults managed from `home/desktop/end4/settings.nix`.
 - Idle behavior is also owned locally through `hypr/hypridle.conf` so lock/suspend flow stays declarative.
 - `custom/keybinds.conf` is intentionally left empty to avoid a second local binding layer.
 - `Super+Tab` enters resize mode, while End-4 workspace overview moved to `Super+Shift+Tab`.
