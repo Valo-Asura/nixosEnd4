@@ -30,10 +30,16 @@ let
       [
         "exec-once = easyeffects --hide-window --service-mode"
         "exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh"
+        "exec-once = qs -c $qsConfig &"
+        "qs -c $qsConfig ipc call cliphistService update"
+        "exec-once = gnome-keyring-daemon --start --components=secrets"
       ]
       [
         "# exec-once = easyeffects --hide-window --service-mode  # Disabled for idle RSS/process targets"
         "# exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh  # Disabled for faster static-wallpaper startup"
+        "exec-once = qs -p $qsConfig &"
+        "qs -p $qsConfig ipc call cliphistService update"
+        "# exec-once = gnome-keyring-daemon --start --components=secrets  # Managed by PAM + system keyring service"
       ]
       (builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/execs.conf");
 
@@ -118,7 +124,7 @@ let
   searchLauncher = pkgs.writeShellScriptBin "search-launcher" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -c "$HOME/.config/quickshell/ii" ipc call TEST_ALIVE >/dev/null 2>&1; then
+    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
       exec ${pkgs.hyprland}/bin/hyprctl dispatch global quickshell:searchToggle
     fi
 
@@ -236,7 +242,7 @@ let
   );
 
   hyprIdleConf = ''
-    $lock_cmd = bash -lc 'hyprctl dispatch global quickshell:lock || qs -c "$HOME/.config/quickshell/ii" ipc call lock activate'
+    $lock_cmd = bash -lc 'hyprctl dispatch global quickshell:lock || qs -p "$HOME/.config/quickshell/ii" ipc call lock activate'
     $suspend_cmd = systemctl suspend || loginctl suspend
 
     general {

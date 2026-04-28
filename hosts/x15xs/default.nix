@@ -126,8 +126,9 @@ in
     };
   };
 
-  # Avoid greetd greeter gkr-pam warning spam.
-  security.pam.services.greetd.enableGnomeKeyring = false;
+  # Keep browser and desktop secrets unlocked across greetd logins.
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
 
   services.getty = {
     greetingLine = "";
@@ -150,7 +151,15 @@ in
     nerd-fonts.jetbrains-mono
   ];
 
-  hardware.bluetooth.enable = true;
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings.General = {
+      FastConnectable = true;
+      JustWorksRepairing = "always";
+      Privacy = "device";
+    };
+  };
   services.blueman.enable = true;
   services.upower.enable = true;
 

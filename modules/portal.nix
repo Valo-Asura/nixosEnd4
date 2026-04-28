@@ -33,8 +33,8 @@ in
       enable = true;
       extraPortals = lib.mkForce [
         config.programs.hyprland.portalPackage
+        pkgs.xdg-desktop-portal-gtk
       ];
-      config.common.default = lib.mkForce [ "hyprland" ];
     };
   };
 }

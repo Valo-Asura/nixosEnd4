@@ -62,6 +62,7 @@ def test_nix_files_are_readable():
         "home/desktop/end4/settings.nix",
         "home/desktop/end4/overrides/ChargeLimit.qml",
         "home/desktop/end4/overrides/Todo.qml",
+        "home/desktop/end4/overrides/UtilButtons.qml",
     ]:
         assert read_file(rel)
 
@@ -155,9 +156,13 @@ def test_browser_module_themes_firefox_and_configures_chrome():
         "profiles.asura = {",
         'default = "ddg";',
         "toolkit.legacyUserProfileCustomizations.stylesheets",
-        "--rose-base: #120b10;",
+        "--zen-base: #0b0d10;",
+        "OfferToSaveLogins = true;",
+        '"signon.rememberSignons" = true;',
         "home.activation.configureChromeProfile",
+        "home.activation.configureZenProfile",
         'chrome_dir="$HOME/.config/google-chrome"',
+        'zen_root="$HOME/.config/zen"',
         'browser.custom_chrome_frame = true',
         'browser.theme.color_scheme = 2',
     ]:
@@ -249,6 +254,7 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "quickshell-patched-local",
         './overrides/Todo.qml',
         './overrides/ChargeLimit.qml',
+        './overrides/UtilButtons.qml',
         'chmod u+w "$STATE_DIR"/user/generated/terminal/sequences.txt',
         '"matugen".enable = lib.mkForce false;',
         '"fuzzel".enable = lib.mkForce false;',
@@ -286,12 +292,12 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "fetchInterval = 10;",
         's|interval: 200|interval: 1000|',
         "$out/ii/services/ChargeLimit.qml",
+        "$out/ii/modules/ii/bar/UtilButtons.qml",
         "$out/ii/services/TimerService.qml",
         's|Quickshell.execDetached(\\\\["loginctl", "lock-session"\\\\]);|GlobalStates.screenLocked = true;|',
         "GlobalStates.screenLocked = true;",
         "showChargeLimitToggle: false",
         'text: Translation.tr("Charge limit toggle")',
-        "onClicked: ChargeLimit.toggle()",
         'state_dir="$HOME/.local/state/quickshell/user"',
         'todo_file="$state_dir/todo.json"',
         'notes_file="$state_dir/notes.txt"',
@@ -339,6 +345,19 @@ def test_charge_limit_service_reports_state_and_invokes_systemd_units():
         "JSON.parse(text)",
     ]:
         assert contains_literal(charge_limit, literal), f"Missing charge-limit literal: {literal}"
+
+
+def test_util_buttons_override_restores_valid_qml_and_charge_limit_toggle():
+    util_buttons = read_file("home/desktop/end4/overrides/UtilButtons.qml")
+    for literal in [
+        "import qs.services",
+        'onClicked: Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "screenshot"]);',
+        "showPerformanceProfileToggle",
+        "showChargeLimitToggle",
+        "onClicked: ChargeLimit.toggle()",
+        'text: !ChargeLimit.supported ? "battery_alert" : (ChargeLimit.enabled ? "battery_6_bar" : "battery_full")',
+    ]:
+        assert contains_literal(util_buttons, literal), f"Missing util-buttons literal: {literal}"
 
 
 def test_local_qt_wrapper_uses_top_level_quickshell_and_basic_render_loop():
@@ -409,7 +428,7 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         '$mod = SUPER',
         "submap = global",
         'searchLauncher = pkgs.writeShellScriptBin "search-launcher"',
-        'qs -c "$HOME/.config/quickshell/ii" ipc call TEST_ALIVE',
+        'qs -p "$HOME/.config/quickshell/ii" ipc show',
         "hyprctl dispatch global quickshell:searchToggle",
         "${pkgs.fuzzel}/bin/fuzzel",
         "bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease",
@@ -423,7 +442,7 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "workspaceInterruptBinds = lib.concatStringsSep",
         "workspaceDispatchBinds = lib.concatStringsSep",
         "hyprIdleConf = ''",
-        'hyprctl dispatch global quickshell:lock || qs -c "$HOME/.config/quickshell/ii" ipc call lock activate',
+        'hyprctl dispatch global quickshell:lock || qs -p "$HOME/.config/quickshell/ii" ipc call lock activate',
         'pkgs.writeShellScriptBin "clipboard"',
         'pkgs.writeShellScriptBin "wallpaper-switch"',
         'pkgs.writeShellScriptBin "wallpaper-random"',
@@ -484,14 +503,14 @@ def test_hyprland_keymap_matches_requested_classic_binds():
     assert not_contains_literal(hyprland, "bindmt = SUPER SHIFT, mouse:272, movewindow")
 
 
-def test_portal_module_is_hyprland_only():
+def test_portal_module_keeps_hyprland_and_gtk_backends():
     portal = read_file("modules/portal.nix")
     assert contains_literal(portal, "services.gvfs.enable = true;")
     assert contains_literal(portal, "services.udisks2.enable = true;")
     assert contains_literal(portal, "extraPortals = lib.mkForce [")
     assert contains_literal(portal, "config.programs.hyprland.portalPackage")
-    assert contains_literal(portal, 'config.common.default = lib.mkForce [ "hyprland" ];')
-    assert not_contains_literal(portal, "xdg-desktop-portal-gtk")
+    assert contains_literal(portal, "pkgs.xdg-desktop-portal-gtk")
+    assert not_contains_literal(portal, 'config.common.default = lib.mkForce [ "hyprland" ];')
 
 
 def test_boot_module_caps_saved_system_generations():
@@ -554,6 +573,13 @@ def test_networking_error_noise_fixes_are_enabled():
         "services.resolved.enable = true;",
         "systemd.services.systemd-rfkill.enable = lib.mkForce true;",
         "systemd.sockets.systemd-rfkill.enable = lib.mkForce true;",
+        "services.gnome.gnome-keyring.enable = true;",
+        "security.pam.services.greetd.enableGnomeKeyring = true;",
+        "hardware.bluetooth = {",
+        "powerOnBoot = true;",
+        "FastConnectable = true;",
+        'JustWorksRepairing = "always";',
+        'Privacy = "device";',
         "wsdd",
     ]:
         assert contains_literal(configuration, literal), f"Missing networking/runtime fix literal: {literal}"

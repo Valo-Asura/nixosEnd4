@@ -7,6 +7,135 @@
 
 let
   cfg = config.modules.browser;
+  minimalBrowserChrome = ''
+    :root {
+      color-scheme: dark !important;
+      --zen-base: #0b0d10;
+      --zen-surface: #111419;
+      --zen-elevated: #171b21;
+      --zen-muted: #98a2b3;
+      --zen-border: rgba(226, 232, 240, 0.14);
+      --zen-border-strong: rgba(226, 232, 240, 0.24);
+      --zen-accent: #d7ba8a;
+      --zen-fg: #edf2f7;
+      --tab-min-height: 34px !important;
+      --toolbarbutton-border-radius: 12px !important;
+      --arrowpanel-border-radius: 16px !important;
+      --lwt-accent-color: var(--zen-base) !important;
+      --lwt-text-color: var(--zen-fg) !important;
+      --toolbar-bgcolor: transparent !important;
+      --toolbar-color: var(--zen-fg) !important;
+      --toolbar-field-background-color: rgba(23, 27, 33, 0.92) !important;
+      --toolbar-field-border-color: var(--zen-border) !important;
+      --toolbar-field-color: var(--zen-fg) !important;
+      --tab-selected-bgcolor: rgba(23, 27, 33, 0.98) !important;
+      --tab-selected-textcolor: var(--zen-fg) !important;
+      --tabpanel-background-color: var(--zen-base) !important;
+    }
+
+    #navigator-toolbox {
+      background: linear-gradient(180deg, #0b0d10 0%, #111419 100%) !important;
+      border-bottom: 0 !important;
+      padding: 6px 10px 4px !important;
+    }
+
+    #TabsToolbar,
+    #nav-bar,
+    #PersonalToolbar,
+    #sidebar-box {
+      background: transparent !important;
+    }
+
+    #nav-bar {
+      border: 1px solid var(--zen-border) !important;
+      border-radius: 16px !important;
+      margin-top: 6px !important;
+      padding: 4px 8px !important;
+    }
+
+    #urlbar-background,
+    .searchbar-textbox {
+      background: rgba(23, 27, 33, 0.92) !important;
+      border: 1px solid var(--zen-border) !important;
+      border-radius: 14px !important;
+    }
+
+    #urlbar[open] > #urlbar-background,
+    #urlbar[focused] > #urlbar-background {
+      border-color: var(--zen-border-strong) !important;
+      box-shadow: 0 0 0 1px rgba(215, 186, 138, 0.18) !important;
+    }
+
+    .tabbrowser-tab {
+      padding-inline: 4px !important;
+    }
+
+    .tabbrowser-tab .tab-background {
+      border: 1px solid transparent !important;
+      border-radius: 12px !important;
+      box-shadow: none !important;
+      margin-block: 3px !important;
+    }
+
+    .tabbrowser-tab[selected="true"] .tab-background {
+      background: linear-gradient(180deg, rgba(23, 27, 33, 0.98) 0%, rgba(30, 36, 44, 0.96) 100%) !important;
+      border-color: var(--zen-border-strong) !important;
+    }
+
+    .tabbrowser-tab:hover .tab-background {
+      background: rgba(23, 27, 33, 0.82) !important;
+    }
+
+    .tab-content,
+    #urlbar-input,
+    #searchbar,
+    .toolbarbutton-1,
+    .tabbrowser-tab {
+      color: var(--zen-fg) !important;
+    }
+
+    .tab-label {
+      font-weight: 500 !important;
+    }
+
+    #tabs-newtab-button,
+    #new-tab-button,
+    #alltabs-button,
+    .toolbarbutton-1 {
+      fill: var(--zen-accent) !important;
+    }
+
+    .toolbarbutton-1:hover {
+      background: rgba(215, 186, 138, 0.10) !important;
+    }
+
+    #PersonalToolbar {
+      min-height: 0 !important;
+    }
+
+    .menupopup-arrowscrollbox,
+    panel[type="arrow"] {
+      background: rgba(17, 20, 25, 0.98) !important;
+      color: var(--zen-fg) !important;
+    }
+  '';
+  zenUserJs = pkgs.writeText "zen-minimal-user.js" ''
+    user_pref("app.shield.optoutstudies.enabled", false);
+    user_pref("browser.compactmode.show", true);
+    user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);
+    user_pref("browser.newtabpage.activity-stream.feeds.system.topstories", false);
+    user_pref("browser.newtabpage.activity-stream.showSponsored", false);
+    user_pref("browser.newtabpage.activity-stream.system.showSponsored", false);
+    user_pref("browser.toolbars.bookmarks.visibility", "never");
+    user_pref("browser.uidensity", 1);
+    user_pref("browser.urlbar.quicksuggest.enabled", false);
+    user_pref("browser.urlbar.quicksuggest.sponsored", false);
+    user_pref("extensions.pocket.enabled", false);
+    user_pref("signon.rememberSignons", true);
+    user_pref("svg.context-properties.content.enabled", true);
+    user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+  '';
+  zenUserChrome = pkgs.writeText "zen-minimal-userChrome.css" minimalBrowserChrome;
 in
 {
   options.modules.browser = {
@@ -27,7 +156,7 @@ in
         DisplayBookmarksToolbar = "never";
         DontCheckDefaultBrowser = true;
         NoDefaultBookmarks = true;
-        OfferToSaveLogins = false;
+        OfferToSaveLogins = true;
       };
       profiles.asura = {
         id = 0;
@@ -51,94 +180,11 @@ in
           "browser.urlbar.quicksuggest.enabled" = false;
           "browser.urlbar.quicksuggest.sponsored" = false;
           "extensions.pocket.enabled" = false;
+          "signon.rememberSignons" = true;
           "svg.context-properties.content.enabled" = true;
           "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
         };
-        userChrome = ''
-          :root {
-            color-scheme: dark !important;
-            --rose-base: #120b10;
-            --rose-surface: #1b1018;
-            --rose-elevated: #2a1620;
-            --rose-border: rgba(255, 127, 151, 0.22);
-            --rose-border-strong: rgba(255, 127, 151, 0.38);
-            --rose-accent: #ff6b84;
-            --rose-accent-strong: #ff4d6d;
-            --rose-fg: #f7d7dd;
-            --tab-min-height: 38px !important;
-            --toolbarbutton-border-radius: 12px !important;
-            --arrowpanel-border-radius: 16px !important;
-            --lwt-accent-color: var(--rose-base) !important;
-            --lwt-text-color: var(--rose-fg) !important;
-            --toolbar-bgcolor: transparent !important;
-            --toolbar-color: var(--rose-fg) !important;
-            --toolbar-field-background-color: rgba(42, 22, 32, 0.9) !important;
-            --toolbar-field-border-color: var(--rose-border) !important;
-            --toolbar-field-color: var(--rose-fg) !important;
-            --tab-selected-bgcolor: rgba(42, 22, 32, 0.96) !important;
-            --tab-selected-textcolor: var(--rose-fg) !important;
-            --tabpanel-background-color: var(--rose-base) !important;
-          }
-
-          #navigator-toolbox {
-            background: linear-gradient(180deg, #120b10 0%, #1b1018 100%) !important;
-            border-bottom: 0 !important;
-          }
-
-          #TabsToolbar,
-          #nav-bar,
-          #PersonalToolbar,
-          #sidebar-box {
-            background: transparent !important;
-          }
-
-          #urlbar-background,
-          .searchbar-textbox {
-            background: rgba(42, 22, 32, 0.9) !important;
-            border: 1px solid var(--rose-border) !important;
-            border-radius: 14px !important;
-          }
-
-          #urlbar[open] > #urlbar-background,
-          #urlbar[focused] > #urlbar-background {
-            border-color: var(--rose-border-strong) !important;
-            box-shadow: 0 0 0 1px rgba(255, 107, 132, 0.2) !important;
-          }
-
-          .tabbrowser-tab[selected="true"] .tab-background {
-            background: linear-gradient(180deg, rgba(42, 22, 32, 0.98) 0%, rgba(58, 28, 42, 0.96) 100%) !important;
-            border: 1px solid var(--rose-border-strong) !important;
-            box-shadow: inset 0 1px 0 rgba(255, 107, 132, 0.16) !important;
-          }
-
-          .tabbrowser-tab:hover .tab-background {
-            background: rgba(42, 22, 32, 0.82) !important;
-          }
-
-          .tab-content,
-          #urlbar-input,
-          #searchbar,
-          .toolbarbutton-1 {
-            color: var(--rose-fg) !important;
-          }
-
-          #tabs-newtab-button,
-          #new-tab-button,
-          #alltabs-button,
-          .toolbarbutton-1 {
-            fill: var(--rose-accent) !important;
-          }
-
-          .toolbarbutton-1:hover {
-            background: rgba(255, 107, 132, 0.12) !important;
-          }
-
-          .menupopup-arrowscrollbox,
-          panel[type="arrow"] {
-            background: rgba(27, 16, 24, 0.98) !important;
-            color: var(--rose-fg) !important;
-          }
-        '';
+        userChrome = minimalBrowserChrome;
       };
     };
 
@@ -176,6 +222,21 @@ in
         .browser.enabled_labs_experiments = []
       ' "$local_state" > "$tmp_local_state"
       mv "$tmp_local_state" "$local_state"
+    '';
+
+    home.activation.configureZenProfile = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      set -euo pipefail
+      zen_root="$HOME/.config/zen"
+
+      if [ ! -d "$zen_root" ]; then
+        exit 0
+      fi
+
+      find "$zen_root" -mindepth 1 -maxdepth 1 -type d ! -name 'Profile Groups' -print0 \
+        | while IFS= read -r -d $'\0' profile; do
+            ${pkgs.coreutils}/bin/install -Dm644 ${zenUserJs} "$profile/user.js"
+            ${pkgs.coreutils}/bin/install -Dm644 ${zenUserChrome} "$profile/chrome/userChrome.css"
+          done
     '';
   };
 }
