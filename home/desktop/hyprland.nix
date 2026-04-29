@@ -230,15 +230,14 @@ let
   );
 
   workspaceDispatchBinds = lib.concatStringsSep "\n" (
-    builtins.genList
-      (i:
-        let
-          ws = toString (i + 1);
-          key = "code:1${toString i}";
-        in
-        "    bind = $mod, ${key}, workspace, ${ws}\n    bind = $shiftMod, ${key}, movetoworkspace, ${ws}"
-      )
-      9
+    builtins.genList (
+      i:
+      let
+        ws = toString (i + 1);
+        key = "code:1${toString i}";
+      in
+      "    bind = $mod, ${key}, workspace, ${ws}\n    bind = $shiftMod, ${key}, movetoworkspace, ${ws}"
+    ) 9
   );
 
   hyprIdleConf = ''
@@ -270,139 +269,139 @@ let
   '';
 
   hyprMainKeybinds = ''
-    # Own the main keybind file directly so upstream End-4 shell binds do not
-    # keep leaking in underneath local overrides.
-    submap = global
+        # Own the main keybind file directly so upstream End-4 shell binds do not
+        # keep leaking in underneath local overrides.
+        submap = global
 
-    $mainMod = SUPER
-    $shiftMod = SUPER SHIFT
-    $altMod = SUPER ALT
-    $mod = SUPER
+        $mainMod = SUPER
+        $shiftMod = SUPER SHIFT
+        $altMod = SUPER ALT
+        $mod = SUPER
 
-    # End-4 launcher on Super release. If Super is used as a chord modifier
-    # (e.g. Super+Q), interrupt so release does not also open launcher.
-    bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
-    bindid = Super, Super_R, Toggle launcher, global, quickshell:searchToggleRelease
-    binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt
-    bind = Ctrl, Super_L, global, quickshell:searchToggleReleaseInterrupt
-    bind = Ctrl, Super_R, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:273, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:274, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:275, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:276, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse:277, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse_up, global, quickshell:searchToggleReleaseInterrupt
-    bind = Super, mouse_down, global, quickshell:searchToggleReleaseInterrupt
+        # End-4 launcher on Super release. If Super is used as a chord modifier
+        # (e.g. Super+Q), interrupt so release does not also open launcher.
+        bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
+        bindid = Super, Super_R, Toggle launcher, global, quickshell:searchToggleRelease
+        binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt
+        bind = Ctrl, Super_L, global, quickshell:searchToggleReleaseInterrupt
+        bind = Ctrl, Super_R, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:273, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:274, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:275, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:276, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:277, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse_up, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse_down, global, quickshell:searchToggleReleaseInterrupt
 
-    bindn = $mainMod, Q, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, H, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, F, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, V, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, J, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, B, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, T, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, C, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, E, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Tab, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, L, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, P, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, F2, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Left, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Right, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Up, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Down, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $mainMod, Print, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Q, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, H, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, F, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, V, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, J, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, B, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, T, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, C, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, E, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Tab, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, L, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, P, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, F2, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Left, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Right, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Up, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Down, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $mainMod, Print, global, quickshell:searchToggleReleaseInterrupt
 
-    bindn = $shiftMod, C, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, E, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, P, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Tab, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Left, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Right, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Up, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Down, global, quickshell:searchToggleReleaseInterrupt
-    bindn = $shiftMod, Print, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, C, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, E, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, P, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Tab, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Left, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Right, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Up, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Down, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $shiftMod, Print, global, quickshell:searchToggleReleaseInterrupt
 
-    bindn = $altMod, P, global, quickshell:searchToggleReleaseInterrupt
+        bindn = $altMod, P, global, quickshell:searchToggleReleaseInterrupt
 
-${workspaceInterruptBinds}
+    ${workspaceInterruptBinds}
 
-    # Apps and shell entry points.
-    bind = $mainMod, Q, killactive,
-    bind = $mainMod, H, exit,
-    bind = $mainMod, F, exec, file-manager
-    bind = $mainMod, V, togglefloating,
-    bind = $mainMod, J, togglesplit,
-    bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox
-    bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
-    bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
-    bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
-    bind = $mainMod, Tab, submap, resize
-    bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle
-    bind = CTRL, L, global, quickshell:lock
-    bind = $mainMod, L, global, quickshell:lock
+        # Apps and shell entry points.
+        bind = $mainMod, Q, killactive,
+        bind = $mainMod, H, exit,
+        bind = $mainMod, F, exec, file-manager
+        bind = $mainMod, V, togglefloating,
+        bind = $mainMod, J, togglesplit,
+        bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox
+        bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
+        bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
+        bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
+        bind = $mainMod, Tab, submap, resize
+        bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle
+        bind = CTRL, L, global, quickshell:lock
+        bind = $mainMod, L, global, quickshell:lock
 
-    # Utilities.
-    bind = $shiftMod, C, exec, clipboard
-    bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
-    bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle
-    bind = $shiftMod, P, exec, wallpaper-random
-    bind = $mod, F2, exec, night-shift
+        # Utilities.
+        bind = $shiftMod, C, exec, clipboard
+        bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
+        bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle
+        bind = $shiftMod, P, exec, wallpaper-random
+        bind = $mod, F2, exec, night-shift
 
-    # Window focus and movement.
-    bind = $mainMod, Left, movefocus, l
-    bind = $mainMod, Right, movefocus, r
-    bind = $mainMod, Up, movefocus, u
-    bind = $mainMod, Down, movefocus, d
-    bind = $shiftMod, Left, movewindow, l
-    bind = $shiftMod, Right, movewindow, r
-    bind = $shiftMod, Up, movewindow, u
-    bind = $shiftMod, Down, movewindow, d
+        # Window focus and movement.
+        bind = $mainMod, Left, movefocus, l
+        bind = $mainMod, Right, movefocus, r
+        bind = $mainMod, Up, movefocus, u
+        bind = $mainMod, Down, movefocus, d
+        bind = $shiftMod, Left, movewindow, l
+        bind = $shiftMod, Right, movewindow, r
+        bind = $shiftMod, Up, movewindow, u
+        bind = $shiftMod, Down, movewindow, d
 
-    bindm = $mod, mouse:272, movewindow
-    bindm = $mod, mouse:273, resizewindow
-    bindm = $mod, Control_L, movewindow
-    bindm = $mod, ALT_L, resizewindow
+        bindm = $mod, mouse:272, movewindow
+        bindm = $mod, mouse:273, resizewindow
+        bindm = $mod, Control_L, movewindow
+        bindm = $mod, ALT_L, resizewindow
 
-    # Super+Tab enters resize mode.
-    # End-4 workspace overview is moved to Super+Shift+Tab.
-    bind = $shiftMod, R, submap, resize
-    submap = resize
-    binde = , Left, resizeactive, -40 0
-    binde = , Right, resizeactive, 40 0
-    binde = , Up, resizeactive, 0 -40
-    binde = , Down, resizeactive, 0 40
-    binde = , mouse_up, resizeactive, 40 0
-    binde = , mouse_down, resizeactive, -40 0
-    binde = SHIFT, mouse_up, resizeactive, 0 40
-    binde = SHIFT, mouse_down, resizeactive, 0 -40
-    bind = , Escape, submap, global
-    bind = , Return, submap, global
-    bind = , Tab, submap, global
-    bind = $shiftMod, R, submap, global
-    submap = global
+        # Super+Tab enters resize mode.
+        # End-4 workspace overview is moved to Super+Shift+Tab.
+        bind = $shiftMod, R, submap, resize
+        submap = resize
+        binde = , Left, resizeactive, -40 0
+        binde = , Right, resizeactive, 40 0
+        binde = , Up, resizeactive, 0 -40
+        binde = , Down, resizeactive, 0 40
+        binde = , mouse_up, resizeactive, 40 0
+        binde = , mouse_down, resizeactive, -40 0
+        binde = SHIFT, mouse_up, resizeactive, 0 40
+        binde = SHIFT, mouse_down, resizeactive, 0 -40
+        bind = , Escape, submap, global
+        bind = , Return, submap, global
+        bind = , Tab, submap, global
+        bind = $shiftMod, R, submap, global
+        submap = global
 
-    # Screenshots.
-    bind = , Print, exec, ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy
-    bind = $mainMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
-    bind = $shiftMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+        # Screenshots.
+        bind = , Print, exec, ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy
+        bind = $mainMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+        bind = $shiftMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
 
-    # Workspaces.
-${workspaceDispatchBinds}
+        # Workspaces.
+    ${workspaceDispatchBinds}
 
-    # Hardware keys.
-    bindl = , XF86AudioMute, exec, sound-toggle
-    bindl = , XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause
-    bindl = , XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next
-    bindl = , XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous
-    bindl = , switch:Lid Switch, global, quickshell:lock
+        # Hardware keys.
+        bindl = , XF86AudioMute, exec, sound-toggle
+        bindl = , XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause
+        bindl = , XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next
+        bindl = , XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous
+        bindl = , switch:Lid Switch, global, quickshell:lock
 
-    bindle = , XF86AudioRaiseVolume, exec, sound-up
-    bindle = , XF86AudioLowerVolume, exec, sound-down
-    bindle = , XF86MonBrightnessUp, exec, brightness-up
-    bindle = , XF86MonBrightnessDown, exec, brightness-down
+        bindle = , XF86AudioRaiseVolume, exec, sound-up
+        bindle = , XF86AudioLowerVolume, exec, sound-down
+        bindle = , XF86MonBrightnessUp, exec, brightness-up
+        bindle = , XF86MonBrightnessDown, exec, brightness-down
   '';
 
   hyprCustomKeybinds = ''
@@ -439,7 +438,7 @@ ${workspaceDispatchBinds}
         workspace_swipe_min_speed_to_force = 5
         workspace_swipe_direction_lock = true
         workspace_swipe_direction_lock_threshold = 10
-        workspace_swipe_create_new = true
+        workspace_swipe_create_new = false
     }
 
     misc {
