@@ -34,13 +34,6 @@ in
   modules = {
     boot.enable = true;
 
-    batteryCare = {
-      enable = true;
-      stopThreshold = 90;
-      defaultEnabled = true;
-      user = "asura";
-    };
-
     performance = {
       enable = true;
       profile = "balanced";

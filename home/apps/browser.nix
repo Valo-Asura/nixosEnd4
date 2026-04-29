@@ -163,7 +163,6 @@ in
         isDefault = true;
         name = "asura";
         search = {
-          force = true;
           default = "ddg";
         };
         settings = {

@@ -24,10 +24,9 @@ in
 
   config = lib.mkIf cfg.enable {
     boot.kernelPackages =
-      if pkgs ? linuxPackages_cachyos then
-        pkgs.linuxPackages_cachyos
-      else if pkgs ? linuxPackages_xanmod_latest then
-        pkgs.linuxPackages_xanmod_latest
+      if pkgs ? linuxPackages_7_0 then
+        # nixos-unstable has Linux 7.0.x before its downstream zen package catches up.
+        pkgs.linuxPackages_7_0
       else
         pkgs.linuxPackages_zen;
 

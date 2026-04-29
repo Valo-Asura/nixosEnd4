@@ -516,6 +516,8 @@ def test_portal_module_keeps_hyprland_and_gtk_backends():
 def test_boot_module_caps_saved_system_generations():
     boot = read_file("modules/boot.nix")
     assert contains_literal(boot, 'windowsEspPartUuid = "2e64ad33-87cf-49fc-971a-ef00da61c67b";')
+    assert contains_literal(boot, "linuxPackages_7_0")
+    assert contains_literal(boot, "pkgs.linuxPackages_zen")
     assert contains_literal(boot, "limine = {")
     assert contains_literal(boot, "maxGenerations = 7;")
     assert contains_literal(boot, 'windowsBootManagerPath = "/EFI/Microsoft/Boot/bootmgfw.efi";')

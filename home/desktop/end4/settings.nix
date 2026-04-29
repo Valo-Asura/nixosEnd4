@@ -25,62 +25,62 @@ let
         ];
       }
       ''
-              cp -r ${dotfilesSource}/dots/.config/quickshell $out
-              chmod -R +w $out
-              cp ${./overrides/Todo.qml} "$out/ii/services/Todo.qml"
-              cp ${./overrides/ChargeLimit.qml} "$out/ii/services/ChargeLimit.qml"
-              cp ${./overrides/UtilButtons.qml} "$out/ii/modules/ii/bar/UtilButtons.qml"
+                      cp -r ${dotfilesSource}/dots/.config/quickshell $out
+                      chmod -R +w $out
+                      cp ${./overrides/Todo.qml} "$out/ii/services/Todo.qml"
+                      cp ${./overrides/ChargeLimit.qml} "$out/ii/services/ChargeLimit.qml"
+                      cp ${./overrides/UtilButtons.qml} "$out/ii/modules/ii/bar/UtilButtons.qml"
 
-              find "$out" -name "*.py" -print0 | xargs -0 sed -i \
-                's|^#!.*ILLOGICAL_IMPULSE_VIRTUAL_ENV.*|#!/usr/bin/env python3|'
+                      find "$out" -name "*.py" -print0 | xargs -0 sed -i \
+                        's|^#!.*ILLOGICAL_IMPULSE_VIRTUAL_ENV.*|#!/usr/bin/env python3|'
 
-              sed -i \
-                's|cp "$SCRIPT_DIR/terminal/sequences.txt" "$STATE_DIR"/user/generated/terminal/sequences.txt|cp "$SCRIPT_DIR/terminal/sequences.txt" "$STATE_DIR"/user/generated/terminal/sequences.txt\
-        chmod u+w "$STATE_DIR"/user/generated/terminal/sequences.txt|' \
-                "$out/ii/scripts/colors/applycolor.sh"
+                      sed -i \
+                        's|cp "$SCRIPT_DIR/terminal/sequences.txt" "$STATE_DIR"/user/generated/terminal/sequences.txt|cp "$SCRIPT_DIR/terminal/sequences.txt" "$STATE_DIR"/user/generated/terminal/sequences.txt\
+                chmod u+w "$STATE_DIR"/user/generated/terminal/sequences.txt|' \
+                        "$out/ii/scripts/colors/applycolor.sh"
 
-              # Make switchwall non-interactive with newer matugen builds.
-              sed -i \
-                's|^    matugen .*|    matugen --source-color-index 0 --prefer closest-to-fallback "''${matugen_args[@]}"|' \
-                "$out/ii/scripts/colors/switchwall.sh"
+                      # Make switchwall non-interactive with newer matugen builds.
+                      sed -i \
+                        's|^    matugen .*|    matugen --source-color-index 0 --prefer closest-to-fallback "''${matugen_args[@]}"|' \
+                        "$out/ii/scripts/colors/switchwall.sh"
 
-              sed -i \
-                's|interval: 200|interval: 1000|' \
-                "$out/ii/services/TimerService.qml"
+                      sed -i \
+                        's|interval: 200|interval: 1000|' \
+                        "$out/ii/services/TimerService.qml"
 
-              sed -i \
-                's|Quickshell.execDetached(\\["loginctl", "lock-session"\\]);|GlobalStates.screenLocked = true;|' \
-                "$out/ii/modules/common/functions/Session.qml"
+                      sed -i \
+                        's|Quickshell.execDetached(\\["loginctl", "lock-session"\\]);|GlobalStates.screenLocked = true;|' \
+                        "$out/ii/modules/common/functions/Session.qml"
 
-              sed -i \
-                '/function lock() {/,/^    }/c\    function lock() {\n        GlobalStates.screenLocked = true;\n    }' \
-                "$out/ii/modules/common/panels/lock/LockScreen.qml"
+                      sed -i \
+                        '/function lock() {/,/^    }/c\    function lock() {\n        GlobalStates.screenLocked = true;\n    }' \
+                        "$out/ii/modules/common/panels/lock/LockScreen.qml"
 
-              sed -i \
-                's|property bool showPerformanceProfileToggle: false|property bool showPerformanceProfileToggle: false\
-                    property bool showChargeLimitToggle: false|' \
-                "$out/ii/modules/common/Config.qml"
+                      sed -i \
+                        's|property bool showPerformanceProfileToggle: false|property bool showPerformanceProfileToggle: false\
+                            property bool showChargeLimitToggle: false|' \
+                        "$out/ii/modules/common/Config.qml"
 
-              sed -i \
-                '/text: Translation.tr("Performance Profile toggle")/,/}/c\            ConfigSwitch {\
-\                buttonIcon: "speed"\
-\                text: Translation.tr("Performance Profile toggle")\
-\                checked: Config.options.bar.utilButtons.showPerformanceProfileToggle\
-\                onCheckedChanged: {\
-\                    Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;\
-\                }\
-\            }\
-\            ConfigSwitch {\
-\                buttonIcon: "battery_6_bar"\
-\                text: Translation.tr("Charge limit toggle")\
-\                checked: Config.options.bar.utilButtons.showChargeLimitToggle\
-\                onCheckedChanged: {\
-\                    Config.options.bar.utilButtons.showChargeLimitToggle = checked;\
-\                }\
-\            }' \
-                "$out/ii/modules/settings/BarConfig.qml"
+                      sed -i \
+                        '/text: Translation.tr("Performance Profile toggle")/,/}/c\            ConfigSwitch {\
+        \                buttonIcon: "speed"\
+        \                text: Translation.tr("Performance Profile toggle")\
+        \                checked: Config.options.bar.utilButtons.showPerformanceProfileToggle\
+        \                onCheckedChanged: {\
+        \                    Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;\
+        \                }\
+        \            }\
+        \            ConfigSwitch {\
+        \                buttonIcon: "battery_6_bar"\
+        \                text: Translation.tr("Charge limit toggle")\
+        \                checked: Config.options.bar.utilButtons.showChargeLimitToggle\
+        \                onCheckedChanged: {\
+        \                    Config.options.bar.utilButtons.showChargeLimitToggle = checked;\
+        \                }\
+        \            }' \
+                        "$out/ii/modules/settings/BarConfig.qml"
 
-              patchShebangs "$out"
+                      patchShebangs "$out"
       '';
 
   managedSettings = {
@@ -116,7 +116,7 @@ let
     bar.weather = {
       enable = true;
       enableGPS = false;
-      city = "Rishikesh, Uttarakhand, India 249204";
+      city = "Gumaniwala, Uttarakhand, India 249204";
       useUSCS = false;
       fetchInterval = 10;
     };
@@ -188,46 +188,6 @@ in
             "${managedSettingsJson}" > "$tmp"
 
           mv "$tmp" "$target"
-        '';
-
-    home.activation.syncIllogicalWeatherLocation =
-      lib.hm.dag.entryAfter [ "mergeIllogicalImpulseSettings" ]
-        ''
-          set -euo pipefail
-
-          target="$HOME/.config/illogical-impulse/config.json"
-          [ -s "$target" ] || exit 0
-
-          # Use a public geolocation endpoint to keep weather location aligned
-          # with the machine's current network location.
-          geo_json="$(${pkgs.curl}/bin/curl -fsSL --retry 2 --retry-delay 1 --max-time 8 https://ipapi.co/json/ 2>/dev/null || true)"
-          [ -n "$geo_json" ] || exit 0
-
-          extract_field() {
-            printf '%s' "$geo_json" | ${pkgs.jq}/bin/jq -r "$1 // empty" 2>/dev/null || true
-          }
-
-          city="$(extract_field '.city')"
-          region="$(extract_field '.region')"
-          postal="$(extract_field '.postal')"
-          country="$(extract_field '.country_name')"
-
-          [ -n "$city" ] || exit 0
-          [ -n "$country" ] || exit 0
-
-          weather_city="$city"
-          [ -n "$region" ] && weather_city="$weather_city, $region"
-          weather_city="$weather_city, $country"
-          [ -n "$postal" ] && weather_city="$weather_city $postal"
-
-          tmp="$(${pkgs.coreutils}/bin/mktemp)"
-          if ${pkgs.jq}/bin/jq --arg city "$weather_city" \
-            '.bar.weather.city = $city | .bar.weather.enable = true | .bar.weather.enableGPS = false' \
-            "$target" > "$tmp"; then
-            mv "$tmp" "$target"
-          else
-            rm -f "$tmp"
-          fi
         '';
 
     home.activation.prepareIllogicalImpulseMutableThemeOutputs =
