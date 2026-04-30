@@ -15,7 +15,7 @@ in
 
     defaultModel = lib.mkOption {
       type = lib.types.str;
-      default = "qwen3:4b";
+      default = "qwen2.5:3b";
       description = "Model automatically loaded by ollama-model-loader";
     };
 
@@ -33,8 +33,8 @@ in
 
     contextLength = lib.mkOption {
       type = lib.types.int;
-      default = 2048;
-      description = "Context window size via OLLAMA_CONTEXT_LENGTH.";
+      default = 4096;
+      description = "Context window size via OLLAMA_CONTEXT_LENGTH. qwen2.5:3b fits in 4GB VRAM with 4k context.";
     };
 
     flashAttention = lib.mkOption {

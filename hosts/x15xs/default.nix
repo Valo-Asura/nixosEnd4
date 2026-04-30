@@ -51,10 +51,10 @@ in
     ollama = {
       enable = true;
       preloadModel = false;
-      defaultModel = "qwen3:4b";
-      gpuOverheadBytes = 1073741824;
+      defaultModel = "qwen2.5:3b";
+      gpuOverheadBytes = 536870912;  # 512 MB overhead (was 1 GB; qwen2.5:3b is smaller)
       keepAlive = "2m";
-      contextLength = 2048;
+      contextLength = 4096;  # Fits fully in 4 GB VRAM with qwen2.5:3b
       flashAttention = true;
       maxLoadedModels = 1;
       guiEnable = false;
