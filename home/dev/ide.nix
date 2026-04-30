@@ -70,6 +70,9 @@ in
       code-cursor
       kiro
       antigravity
+      windsurf
+      # trae: ByteDance AI IDE — no Linux build exists yet (macOS/Windows only).
+      # Add here once a Linux release ships.
     ];
 
     # Keep VS Code settings mutable because programs.vscode emits this as a
@@ -112,6 +115,7 @@ in
         install_for "${pkgs.code-cursor}/bin/cursor"
         install_for "${pkgs.kiro}/bin/kiro"
         install_for "${pkgs.antigravity}/bin/antigravity"
+        install_for "${pkgs.windsurf}/bin/windsurf"
 
         ${pkgs.coreutils}/bin/printf '%s' "$wanted" > "$marker"
       fi
@@ -120,9 +124,9 @@ in
     home.activation.configureAllIdeNixSupport = lib.hm.dag.entryAfter [ "installOtherIdeExtensions" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      # v4: split Pylance (VS Code/Cursor) vs Jedi (Kiro/Antigravity — Open VSX only)
-      marker="$state_dir/nix-settings-v4"
-      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v4"
+      # v5: add Windsurf (Microsoft marketplace → Pylance)
+      marker="$state_dir/nix-settings-v5"
+      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v5"
 
       mkdir -p "$state_dir"
 
@@ -238,8 +242,8 @@ in
       if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker" 2>/dev/null || true)" != "$wanted" ]; then
         needs_update=1
       else
-        # VS Code & Cursor use Pylance (Microsoft marketplace)
-        for app in Code Cursor; do
+        # VS Code, Cursor & Windsurf use Pylance (Microsoft marketplace)
+        for app in Code Cursor Windsurf; do
           if settings_need_merge "$app" "Pylance"; then
             needs_update=1
             break
@@ -255,11 +259,12 @@ in
       fi
 
       if [ "$needs_update" -eq 1 ]; then
-        # VS Code & Cursor: Pylance (available via Microsoft extension marketplace)
-        merge_settings "Code"       "Pylance"
-        merge_settings "Cursor"     "Pylance"
+        # VS Code, Cursor & Windsurf: Pylance (Microsoft extension marketplace)
+        merge_settings "Code"        "Pylance"
+        merge_settings "Cursor"      "Pylance"
+        merge_settings "Windsurf"    "Pylance"
         # Kiro & Antigravity: Jedi (Pylance is proprietary and not on Open VSX)
-        merge_settings "Kiro"       "Jedi"
+        merge_settings "Kiro"        "Jedi"
         merge_settings "Antigravity" "Jedi"
 
         ${pkgs.coreutils}/bin/printf '%s' "$wanted" > "$marker"
