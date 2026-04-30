@@ -80,7 +80,7 @@ in
         wtype
         ydotool
         glib
-        swww
+        awww
         translate-shell
         hyprpicker
         imagemagick
