@@ -40,6 +40,41 @@ in
       nbfcProfile = "Colorful X15 AT 22";
     };
 
+    performanceEnhanced = {
+      enable = true;
+      profile = "balanced";           # Options: max | balanced | cool
+      kernelVersion = "latest";        # Options: latest | zen | cachyos | xanmod
+      nbfcProfile = "Colorful X15 AT 22";
+      disableIPv6 = false;
+      debugMode = false;
+    };
+
+    hardwareMonitor = {
+      enable = true;
+      pollInterval = 2;                # Seconds between sensor readings
+      enableAlerts = true;
+      alertThresholds = {
+        cpuTemp = 85;
+        gpuTemp = 83;
+        fanStop = true;
+      };
+    };
+
+    quickshellIntegration = {
+      enable = true;
+      updateInterval = 2000;           # Widget refresh in ms
+      showGpu = true;
+      showFan = true;
+    };
+
+    systemCleanup = {
+      enable = true;
+      autoGc = true;
+      autoOptimise = true;
+      journalMaxSize = "500M";
+      cleanupInterval = "weekly";
+    };
+
     nvidia = {
       enable = true;
       intelBusId = "PCI:0:2:0";
