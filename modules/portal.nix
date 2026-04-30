@@ -31,8 +31,10 @@ in
 
     xdg.portal = {
       enable = true;
+      # programs.hyprland.enable already inserts the Hyprland portal package;
+      # only add the GTK fallback portal here to avoid the duplicate
+      # 'org.freedesktop.impl.portal.desktop.hyprland' dbus service warning.
       extraPortals = lib.mkForce [
-        config.programs.hyprland.portalPackage
         pkgs.xdg-desktop-portal-gtk
       ];
     };

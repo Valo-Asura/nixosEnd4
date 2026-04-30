@@ -120,12 +120,17 @@ in
     home.activation.configureAllIdeNixSupport = lib.hm.dag.entryAfter [ "installOtherIdeExtensions" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      marker="$state_dir/nix-settings-v3"
-      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v3"
+      # v4: split Pylance (VS Code/Cursor) vs Jedi (Kiro/Antigravity — Open VSX only)
+      marker="$state_dir/nix-settings-v4"
+      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v4"
 
       mkdir -p "$state_dir"
+
+      # Check if settings already have the expected language server for this app.
+      # $1 = config app name, $2 = expected python.languageServer value
       settings_need_merge() {
         local app="$1"
+        local lang_server="$2"
         local settings="$HOME/.config/$app/User/settings.json"
 
         if [ ! -s "$settings" ] || ! ${pkgs.jq}/bin/jq -e . "$settings" >/dev/null 2>&1; then
@@ -136,6 +141,7 @@ in
           --arg nil "${pkgs.nil}/bin/nil" \
           --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
           --arg python "${jupyterPython}/bin/python3" \
+          --arg lang_server "$lang_server" \
           '
             ."nix.enableLanguageServer" == true and
             ."nix.serverPath" == $nil and
@@ -148,7 +154,7 @@ in
             ."telemetry.telemetryLevel" == "off" and
             ."update.mode" == "none" and
             ."python.defaultInterpreterPath" == $python and
-            ."python.languageServer" == "Pylance" and
+            ."python.languageServer" == $lang_server and
             ."python.analysis.typeCheckingMode" == "basic" and
             ."python.analysis.autoImportCompletions" == true and
             ."python.testing.pytestEnabled" == true and
@@ -164,8 +170,10 @@ in
         return 1
       }
 
+      # $1 = config app name, $2 = python.languageServer value ("Pylance" or "Jedi")
       merge_settings() {
         local app="$1"
+        local lang_server="$2"
         local cfg_dir="$HOME/.config/$app/User"
         local settings="$cfg_dir/settings.json"
         local tmp
@@ -180,6 +188,7 @@ in
           --arg nil "${pkgs.nil}/bin/nil" \
           --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
           --arg python "${jupyterPython}/bin/python3" \
+          --arg lang_server "$lang_server" \
           '. + {
             "nix.enableLanguageServer": true,
             "nix.serverPath": $nil,
@@ -196,7 +205,7 @@ in
             "telemetry.telemetryLevel": "off",
             "update.mode": "none",
             "python.defaultInterpreterPath": $python,
-            "python.languageServer": "Pylance",
+            "python.languageServer": $lang_server,
             "python.analysis.typeCheckingMode": "basic",
             "python.analysis.autoImportCompletions": true,
             "python.testing.pytestEnabled": true,
@@ -229,8 +238,16 @@ in
       if [ ! -f "$marker" ] || [ "$(${pkgs.coreutils}/bin/cat "$marker" 2>/dev/null || true)" != "$wanted" ]; then
         needs_update=1
       else
-        for app in Code Cursor Kiro Antigravity; do
-          if settings_need_merge "$app"; then
+        # VS Code & Cursor use Pylance (Microsoft marketplace)
+        for app in Code Cursor; do
+          if settings_need_merge "$app" "Pylance"; then
+            needs_update=1
+            break
+          fi
+        done
+        # Kiro & Antigravity use Jedi (Pylance is proprietary, unavailable on Open VSX)
+        for app in Kiro Antigravity; do
+          if settings_need_merge "$app" "Jedi"; then
             needs_update=1
             break
           fi
@@ -238,10 +255,12 @@ in
       fi
 
       if [ "$needs_update" -eq 1 ]; then
-        merge_settings "Code"
-        merge_settings "Cursor"
-        merge_settings "Kiro"
-        merge_settings "Antigravity"
+        # VS Code & Cursor: Pylance (available via Microsoft extension marketplace)
+        merge_settings "Code"       "Pylance"
+        merge_settings "Cursor"     "Pylance"
+        # Kiro & Antigravity: Jedi (Pylance is proprietary and not on Open VSX)
+        merge_settings "Kiro"       "Jedi"
+        merge_settings "Antigravity" "Jedi"
 
         ${pkgs.coreutils}/bin/printf '%s' "$wanted" > "$marker"
       fi
