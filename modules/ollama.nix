@@ -92,6 +92,23 @@ in
       };
     };
 
+    # Constrain Ollama's system resource footprint so it does not compete
+    # with the desktop or nix builds during idle / light inference periods.
+    systemd.services.ollama.serviceConfig = {
+      # Soft memory cap: kernel starts reclaiming at 512 MB.
+      # Hard cap: killed if it exceeds 3 GB (protects 16 GB desktop).
+      MemoryHigh = "512M";
+      MemoryMax  = "3G";
+      # Subject Ollama to OOM memory-pressure management.
+      ManagedOOMMemoryPressure = "kill";
+      ManagedOOMMemoryPressureLimit = "80%";
+      # batch: Ollama inference is background work; don't compete with interactive apps.
+      CPUSchedulingPolicy = "batch";
+      # Give the desktop higher priority via CPU weight (default is 100).
+      CPUWeight = 50;
+      IOWeight  = 50;
+    };
+
     services.open-webui = lib.mkIf cfg.guiEnable {
       enable = true;
       host = cfg.guiHost;
@@ -104,3 +121,4 @@ in
     };
   };
 }
+
