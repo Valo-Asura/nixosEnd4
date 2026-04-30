@@ -51,13 +51,13 @@ in
     ollama = {
       enable = true;
       preloadModel = false;
-      defaultModel = "qwen2.5:3b";
-      gpuOverheadBytes = 536870912;  # 512 MB overhead (was 1 GB; qwen2.5:3b is smaller)
+      defaultModel = "phi4-mini:3.8b";
+      gpuOverheadBytes = 536870912;  # 512 MB overhead — phi4-mini:3.8b uses ~2.3GB VRAM
       keepAlive = "2m";
-      contextLength = 4096;  # Fits fully in 4 GB VRAM with qwen2.5:3b
+      contextLength = 4096;
       flashAttention = true;
       maxLoadedModels = 1;
-      guiEnable = false;
+      guiEnable = true;         # Enable Open WebUI at localhost:8080
       guiHost = "127.0.0.1";
       guiPort = 8080;
       guiOpenFirewall = false;

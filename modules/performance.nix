@@ -271,15 +271,12 @@ in
         ExecStart = "${pkgs.nbfc-linux}/bin/nbfc_service --config-file /etc/nbfc/nbfc.json";
         Restart = "on-failure";
         RestartSec = 3;
-        # Harden: fan daemon only needs minimal capabilities.
-        CapabilityBoundingSet = [ "CAP_SYS_RAWIO" "CAP_DAC_OVERRIDE" ];
-        NoNewPrivileges = false; # needs rawio
-        PrivateTmp = true;
-        ProtectHome = true;
-        ProtectSystem = "strict";
-        ReadWritePaths = [ "/etc/nbfc" "/run" "/sys" "/dev/ec" "/dev/port" ];
+        # nbfc needs raw EC hardware access (/dev/port, acpi_ec, ec_sys).
+        # /dev/ec does NOT exist on this machine — do NOT use ProtectSystem or
+        # ReadWritePaths or the service will fail with status=226/NAMESPACE.
       };
     };
+
 
     # ── Diagnostic utilities ─────────────────────────────────────────────────
     environment.systemPackages = [

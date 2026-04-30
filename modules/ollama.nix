@@ -2,6 +2,7 @@
 
 let
   cfg = config.modules.ollama;
+  searxngPort = 8888;
 in
 {
   options.modules.ollama = {
@@ -15,13 +16,13 @@ in
 
     defaultModel = lib.mkOption {
       type = lib.types.str;
-      default = "qwen2.5:3b";
-      description = "Model automatically loaded by ollama-model-loader";
+      default = "phi4-mini:3.8b";
+      description = "Model automatically loaded by ollama-model-loader. phi4-mini:3.8b = ~2.3GB VRAM, fastest reasoning on RTX 3050 4GB.";
     };
 
     gpuOverheadBytes = lib.mkOption {
       type = lib.types.int;
-      default = 1073741824;
+      default = 536870912; # 512 MB
       description = "Reserved VRAM headroom via OLLAMA_GPU_OVERHEAD";
     };
 
@@ -34,7 +35,7 @@ in
     contextLength = lib.mkOption {
       type = lib.types.int;
       default = 4096;
-      description = "Context window size via OLLAMA_CONTEXT_LENGTH. qwen2.5:3b fits in 4GB VRAM with 4k context.";
+      description = "Context window size via OLLAMA_CONTEXT_LENGTH. phi4-mini:3.8b fits in 4GB VRAM with 4k context.";
     };
 
     flashAttention = lib.mkOption {
@@ -92,33 +93,101 @@ in
       };
     };
 
-    # Constrain Ollama's system resource footprint so it does not compete
-    # with the desktop or nix builds during idle / light inference periods.
+    # Constrain Ollama's resource footprint — keeps desktop responsive during inference.
     systemd.services.ollama.serviceConfig = {
-      # Soft memory cap: kernel starts reclaiming at 512 MB.
-      # Hard cap: killed if it exceeds 3 GB (protects 16 GB desktop).
       MemoryHigh = "512M";
       MemoryMax  = "3G";
-      # Subject Ollama to OOM memory-pressure management.
       ManagedOOMMemoryPressure = "kill";
       ManagedOOMMemoryPressureLimit = "80%";
-      # batch: Ollama inference is background work; don't compete with interactive apps.
       CPUSchedulingPolicy = "batch";
-      # Give the desktop higher priority via CPU weight (default is 100).
       CPUWeight = 50;
       IOWeight  = 50;
     };
 
+    # ── SearXNG: local privacy-respecting web search ──────────────────────────
+    # Provides Open WebUI's RAG web search backend at localhost:8888.
+    # No external API key required.
+    services.searx = {
+      enable = true;
+      package = pkgs.searxng;
+      runInUwsgi = false;
+      settings = {
+        server = {
+          port = searxngPort;
+          bind_address = "127.0.0.1";
+          secret_key = "nixos-x15xs-searxng-local-only";
+          limiter = false;       # local only, no rate limiting needed
+          image_proxy = true;
+          public_instance = false;
+        };
+        ui = {
+          static_use_hash = true;
+          default_locale = "en";
+          query_in_title = true;
+          results_on_new_tab = false;
+          default_theme = "simple";
+        };
+        search = {
+          safe_search = 0;
+          autocomplete = "";
+          default_lang = "en";
+          ban_time_on_fail = 5;
+          max_ban_time_on_fail = 120;
+        };
+        outgoing = {
+          request_timeout = 8.0;
+          max_request_timeout = 15.0;
+          pool_connections = 100;
+          pool_maxsize = 20;
+        };
+        # Enable fast, reliable engines for AI-assisted web search.
+        engines = [
+          { name = "google";        engine = "google";        categories = "general, web"; disabled = false; }
+          { name = "ddg";           engine = "duckduckgo";    categories = "general, web"; disabled = false; }
+          { name = "brave";         engine = "brave";         categories = "general, web"; disabled = false; }
+          { name = "wikipedia";     engine = "wikipedia";     categories = "general";      disabled = false; }
+          { name = "github";        engine = "github";        categories = "it";           disabled = false; }
+          { name = "stackoverflow"; engine = "stackoverflow"; categories = "it";           disabled = false; }
+          { name = "arxiv";         engine = "arxiv";         categories = "science";      disabled = false; }
+        ];
+      };
+    };
+
+    # ── Open WebUI with SearXNG + tool integration ────────────────────────────
     services.open-webui = lib.mkIf cfg.guiEnable {
       enable = true;
       host = cfg.guiHost;
       port = cfg.guiPort;
       openFirewall = cfg.guiOpenFirewall;
       environment = {
-        OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+        OLLAMA_BASE_URL     = "http://127.0.0.1:11434";
         OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
+
+        # ── RAG Web Search (SearXNG backend) ──────────────────────────────────
+        ENABLE_RAG_WEB_SEARCH = "true";
+        RAG_WEB_SEARCH_ENGINE = "searxng";
+        SEARXNG_QUERY_URL     = "http://127.0.0.1:${toString searxngPort}/search?q=<query>&format=json&language=en";
+
+        # Number of results to fetch per web search query.
+        RAG_WEB_SEARCH_RESULT_COUNT = "5";
+        RAG_WEB_SEARCH_CONCURRENT_REQUESTS = "10";
+
+        # ── Tool / function calling support ───────────────────────────────────
+        # Enables the tool-calling interface in the UI (models with tools: true).
+        ENABLE_TOOLS = "true";
+
+        # ── Performance / privacy ─────────────────────────────────────────────
+        # Disable telemetry and external calls on a local-only install.
+        SCARF_NO_ANALYTICS  = "true";
+        DO_NOT_TRACK        = "1";
+        ANONYMIZED_TELEMETRY = "false";
+
+        # Disable OAuth / external auth (local single-user).
+        WEBUI_AUTH = "false";
+
+        # Cache embeddings locally.
+        RAG_EMBEDDING_ENGINE = "";  # Use local Ollama embeddings
       };
     };
   };
 }
-
