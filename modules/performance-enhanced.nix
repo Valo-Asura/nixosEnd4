@@ -710,7 +710,7 @@ in
             zramctl 2>/dev/null || echo "    zramctl not available"
             echo ""
             echo ">>> I/O Scheduler:"
-            for dev in /sys/block/nvme*/queue/scheduler 2>/dev/null; do
+            for dev in /sys/block/nvme*/queue/scheduler; do
               [ -r "$dev" ] && echo "    $(basename $(dirname $dev)): $(cat $dev)"
             done
             ;;
