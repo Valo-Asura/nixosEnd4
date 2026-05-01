@@ -184,6 +184,7 @@ in
       };
     };
 
+    environment.etc."i3status.conf".source = ../home/desktop/i3/i3status.conf;
     environment.systemPackages = [
       i3ApplyWallpaper
       i3Clipboard

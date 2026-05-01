@@ -22,17 +22,33 @@ let
 
     exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop
   '';
-  sessionShare = "${config.services.displayManager.sessionData.desktops}/share";
+
+  # Build a wayland-sessions directory containing a Hyprland entry.
+  # programs.hyprland with withUWSM does not register via sessionPackages so
+  # sessionData.desktops only gets the i3 xsession — the wayland-sessions dir
+  # is empty, which crashes tuigreet. Provide the desktop file explicitly.
+  waylandSessions = pkgs.runCommand "wayland-sessions" { } ''
+    mkdir -p $out
+    cat > $out/hyprland.desktop <<EOF
+    [Desktop Entry]
+    Name=Hyprland
+    Comment=An intelligent dynamic tiling Wayland compositor
+    Exec=${startHyprland}/bin/start-hyprland
+    Type=Application
+    EOF
+  '';
+
+  xSessions = "${config.services.displayManager.sessionData.desktops}/share/xsessions";
+
   greetdCommand = lib.escapeShellArgs [
     "${pkgs.tuigreet}/bin/tuigreet"
     "--cmd"
     "${startHyprland}/bin/start-hyprland"
     "--sessions"
-    "${sessionShare}/wayland-sessions"
+    "${waylandSessions}"
     "--xsessions"
-    "${sessionShare}/xsessions"
+    "${xSessions}"
     "--remember"
-    "--remember-session"
     "--remember-user-session"
     "--asterisks"
     "--greeting"
@@ -59,7 +75,7 @@ in
 
     performanceEnhanced = {
       enable = true;
-      profile = "balanced";           # Options: max | balanced | cool
+      profile = "balanced"; # Options: max | balanced | cool
       nbfcProfile = "Colorful X15 AT 22";
       disableIPv6 = false;
       debugMode = false;
@@ -67,7 +83,7 @@ in
 
     hardwareMonitor = {
       enable = true;
-      pollInterval = 2;                # Seconds between sensor readings
+      pollInterval = 2; # Seconds between sensor readings
       enableAlerts = true;
       alertThresholds = {
         cpuTemp = 85;
@@ -98,12 +114,12 @@ in
       enable = true;
       preloadModel = false;
       defaultModel = "phi4-mini:3.8b";
-      gpuOverheadBytes = 536870912;  # 512 MB overhead — phi4-mini:3.8b uses ~2.3GB VRAM
+      gpuOverheadBytes = 536870912; # 512 MB overhead — phi4-mini:3.8b uses ~2.3GB VRAM
       keepAlive = "2m";
       contextLength = 4096;
       flashAttention = true;
       maxLoadedModels = 1;
-      guiEnable = true;         # Enable Open WebUI at localhost:8080
+      guiEnable = true; # Enable Open WebUI at localhost:8080
       guiHost = "127.0.0.1";
       guiPort = 8080;
       guiOpenFirewall = false;

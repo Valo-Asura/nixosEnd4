@@ -327,7 +327,7 @@ let
                 try:
                     data = self.collect()
                     self.write_data(data)
-                    time.sleep(cfg.pollInterval)
+                    time.sleep(${toString cfg.pollInterval})
                 except Exception as e:
                     print(f"Error: {e}", file=sys.stderr)
                     time.sleep(1)
