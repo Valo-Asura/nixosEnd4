@@ -839,7 +839,7 @@ in
         PrivateTmp = true;
         ProtectSystem = "strict";
         ProtectHome = true;
-        ReadWritePaths = [ "/tmp" "/run/user" ];
+        ReadWritePaths = [ "/tmp" "/run" ];
         
         # Device access for sensors
         DeviceAllow = [ "/dev/nvidiactl" "/dev/nvidia*" ];
@@ -847,7 +847,7 @@ in
       };
       
       environment = {
-        XDG_RUNTIME_DIR = "/run/user/0";
+        XDG_RUNTIME_DIR = "/run";
       };
     };
     

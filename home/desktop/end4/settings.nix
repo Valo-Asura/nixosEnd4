@@ -30,6 +30,16 @@ let
                       cp ${./overrides/Todo.qml} "$out/ii/services/Todo.qml"
                       cp ${./overrides/ChargeLimit.qml} "$out/ii/services/ChargeLimit.qml"
                       cp ${./overrides/UtilButtons.qml} "$out/ii/modules/ii/bar/UtilButtons.qml"
+                      cp ${./overrides/Resources.qml} "$out/ii/modules/ii/bar/Resources.qml"
+                      cp ${./overrides/ResourcesPopup.qml} "$out/ii/modules/ii/bar/ResourcesPopup.qml"
+                      cp ${./overrides/ResourceService.qml} "$out/ii/services/ResourceService.qml"
+                      sed -i 's|@staleAfterMs@|${toString (config.modules.quickshellIntegration.updateInterval * 3)}|g' \
+                        "$out/ii/modules/ii/bar/ResourcesPopup.qml" \
+                        "$out/ii/services/ResourceService.qml"
+                      sed -i 's|@showGpu@|${if config.modules.quickshellIntegration.showGpu then "true" else "false"}|g' \
+                        "$out/ii/modules/ii/bar/ResourcesPopup.qml"
+                      sed -i 's|@showFan@|${if config.modules.quickshellIntegration.showFan then "true" else "false"}|g' \
+                        "$out/ii/modules/ii/bar/ResourcesPopup.qml"
 
                       find "$out" -name "*.py" -print0 | xargs -0 sed -i \
                         's|^#!.*ILLOGICAL_IMPULSE_VIRTUAL_ENV.*|#!/usr/bin/env python3|'

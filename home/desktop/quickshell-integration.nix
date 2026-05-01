@@ -10,15 +10,6 @@
 let
   cfg = config.modules.quickshellIntegration;
 
-  resourceServicePath = pkgs.replaceVars ./end4/overrides/ResourceService.qml {
-    staleAfterMs = toString (cfg.updateInterval * 3);
-  };
-
-  resourcesPopupPath = pkgs.replaceVars ./end4/overrides/ResourcesPopup.qml {
-    showGpu = if cfg.showGpu then "true" else "false";
-    showFan = if cfg.showFan then "true" else "false";
-  };
-
 in
 {
   # ═══════════════════════════════════════════════════════════════════════════
@@ -80,14 +71,5 @@ in
       '')
     ];
     
-    # ── Home Manager Configuration ───────────────────────────────────────────
-    home.file = lib.mkIf cfg.enable {
-      ".config/quickshell/ii/modules/ii/bar/Resources.qml".source =
-        ./end4/overrides/Resources.qml;
-      ".config/quickshell/ii/modules/ii/bar/ResourcesPopup.qml".source =
-        resourcesPopupPath;
-      ".config/quickshell/ii/services/ResourceService.qml".source =
-        resourceServicePath;
-    };
   };
 }
