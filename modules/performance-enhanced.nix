@@ -9,6 +9,8 @@
 
 let
   cfg = config.modules.performanceEnhanced;
+  basePerformanceEnabled = config.modules.performance.enable;
+  useStandaloneTuning = !basePerformanceEnabled;
   isMax = cfg.profile == "max";
   isBalanced = cfg.profile == "balanced";
   isCool = cfg.profile == "cool";
@@ -261,6 +263,10 @@ let
     ];
   };
 
+  nbfcServiceConfig = builtins.toJSON {
+    SelectedConfigId = "/etc/nbfc/configs/${cfg.nbfcProfile}.json";
+  };
+
 in
 {
   # ═══════════════════════════════════════════════════════════════════════════
@@ -298,18 +304,6 @@ in
       default = false;
       description = "Enable kernel debugging features (reduces performance)";
     };
-    
-    kernelVersion = lib.mkOption {
-      type = lib.types.enum [ "latest" "zen" "cachyos" "xanmod" ];
-      default = "latest";
-      description = ''
-        Kernel flavor:
-        - latest: Latest stable kernel from nixpkgs
-        - zen: Zen kernel (good balance)
-        - cachyos: CachyOS kernel patches (best desktop performance)
-        - xanmod: XanMod kernel (gaming focused)
-      '';
-    };
   };
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -318,20 +312,9 @@ in
   
   config = lib.mkIf cfg.enable {
     
-    # ── Kernel Package Selection ─────────────────────────────────────────────
-    boot.kernelPackages = 
-      if cfg.kernelVersion == "zen" then pkgs.linuxPackages_zen
-      else if cfg.kernelVersion == "cachyos" then 
-        if pkgs ? linuxPackages_cachyos then pkgs.linuxPackages_cachyos
-        else pkgs.linuxPackages_zen
-      else if cfg.kernelVersion == "xanmod" then
-        if pkgs ? linuxPackages_xanmod then pkgs.linuxPackages_xanmod
-        else pkgs.linuxPackages_zen
-      else if pkgs ? linuxPackages_7_0 then pkgs.linuxPackages_7_0
-      else pkgs.linuxPackages_latest;
-
     # ── Kernel Parameters (CachyOS-style) ────────────────────────────────────
-    boot.kernelParams = [
+    # Note: boot.kernelPackages is configured in boot.nix
+    boot.kernelParams = lib.optionals useStandaloneTuning [
       # Scheduler and preemption
       "preempt=full"
       "threadirqs"
@@ -380,7 +363,7 @@ in
       "systemd.show_status=0"
       "udev.log_priority=3"
     ] 
-    ++ lib.optionals isMax [
+    ++ lib.optionals (useStandaloneTuning && isMax) [
       "isolcpus=domain,managed_irq,11"
       "rcu_nocbs=all"
       "rcutree.enable_rcu_lazy=1"
@@ -390,22 +373,22 @@ in
     ];
 
     # ── Kernel Modules ───────────────────────────────────────────────────────
-    boot.kernelModules = [
+    boot.kernelModules = lib.optionals useStandaloneTuning [
       "tcp_bbr"
       "zstd"
       "lz4"
-    ] ++ lib.optionals isMax [
+    ] ++ lib.optionals (useStandaloneTuning && isMax) [
       "cpufreq_performance"
       "cpufreq_schedutil"
     ];
     
-    boot.initrd.kernelModules = [ "zstd" "lz4" ];
+    boot.initrd.kernelModules = lib.optionals useStandaloneTuning [ "zstd" "lz4" ];
 
     # ── sysctl Configuration ─────────────────────────────────────────────────
-    boot.kernel.sysctl = allSysctl;
+    boot.kernel.sysctl = lib.mkIf useStandaloneTuning allSysctl;
 
     # ── Zram Swap with Enhanced Configuration ──────────────────────────────────
-    zramSwap = {
+    zramSwap = lib.mkIf useStandaloneTuning {
       enable = true;
       algorithm = "zstd";
       memoryPercent = if isMax then 75 else 50;
@@ -413,9 +396,9 @@ in
     };
 
     # ── TLP Power Management ─────────────────────────────────────────────────
-    services.power-profiles-daemon.enable = false;
+    services.power-profiles-daemon.enable = lib.mkIf useStandaloneTuning false;
     
-    services.tlp = {
+    services.tlp = lib.mkIf useStandaloneTuning {
       enable = true;
       settings = {
         # CPU governors
@@ -468,54 +451,43 @@ in
       };
     };
 
-    # ── Intel Thermald ─────────────────────────────────────────────────────────
-    services.thermald.enable = true;
-    
-    # ── Ananicy-CPP Process Prioritization ───────────────────────────────────
-    services.ananicy = {
-      enable = true;
-      package = pkgs.ananicy-cpp;
-      rulesProvider = pkgs.ananicy-cpp;
-    };
-
     # ── systemd-oomd Memory Protection ───────────────────────────────────────
-    systemd.oomd = {
-      enable = true;
-      enableRootSlice = true;
-      enableSystemSlice = true;
-      enableUserSlices = true;
-    };
-    
-    # Dedicated nix-daemon slice for build isolation
+    # Note: thermald and basic oomd are configured in performance.nix
+    # This adds enhanced slice configuration
     systemd.slices."nix-daemon" = {
-      sliceConfig = {
-        ManagedOOMMemoryPressure = "kill";
-        ManagedOOMMemoryPressureLimit = if isMax then "70%" else "60%";
-        CPUShares = if isMax then 2048 else 1024;
-        IOWeight = if isMax then 200 else 100;
-      };
+      sliceConfig = lib.mkMerge [
+        (lib.mkIf useStandaloneTuning {
+          ManagedOOMMemoryPressure = "kill";
+          ManagedOOMMemoryPressureLimit = if isMax then "70%" else "60%";
+        })
+        {
+          CPUShares = if isMax then 2048 else 1024;
+          IOWeight = if isMax then 200 else 100;
+        }
+      ];
     };
-    systemd.services.nix-daemon.serviceConfig.Slice = "nix-daemon.slice";
+    systemd.services.nix-daemon.serviceConfig.Slice = lib.mkIf useStandaloneTuning "nix-daemon.slice";
 
     # ── Enhanced NBFC Fan Control ───────────────────────────────────────────
-    environment.etc."nbfc/nbfc.json".text = nbfcEnhancedConfig;
+    environment.etc = lib.mkIf useStandaloneTuning {
+      "nbfc/configs/${cfg.nbfcProfile}.json".text = nbfcEnhancedConfig;
+      "nbfc/nbfc.json".text = nbfcServiceConfig;
+    };
     
-    systemd.services.nbfc_service = {
+    systemd.services.nbfc_service = lib.mkIf useStandaloneTuning {
       description = "Notebook FanControl Service (Enhanced)";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-udevd.service" "sysinit.target" ];
       path = [ pkgs.kmod pkgs.coreutils ];
+      unitConfig = {
+        StartLimitIntervalSec = 60;
+        StartLimitBurst = 3;
+      };
       serviceConfig = {
         Type = "simple";
         ExecStart = "${pkgs.nbfc-linux}/bin/nbfc_service --config-file /etc/nbfc/nbfc.json";
         Restart = "on-failure";
         RestartSec = 3;
-        StartLimitInterval = 60;
-        StartLimitBurst = 3;
-        # Raw EC access required
-        PrivateTmp = true;
-        ProtectSystem = false;
-        ProtectHome = false;
       };
     };
 
@@ -527,9 +499,9 @@ in
       pkgs.fio
       pkgs.iozone
       pkgs.phoronix-test-suite
-      pkgs.perf-linux
-      pkgs.turbostat
-      pkgs.msrtools
+      pkgs.perf
+      config.boot.kernelPackages.turbostat
+      pkgs."msr-tools"
       
       # Hardware monitoring
       pkgs.lm_sensors
@@ -545,7 +517,7 @@ in
       pkgs.iotop
       pkgs.powertop
       pkgs.cpupower-gui
-      pkgs.linuxKernel.packages.linux_latest_libre.cpupower
+      config.boot.kernelPackages.cpupower
       pkgs.tlp
       
       # Custom diagnostic scripts
@@ -589,7 +561,7 @@ in
         FIO_RESULT=$(fio --name=randread --ioengine=libaio --iodepth=32 --rw=randread \
           --bs=4k --direct=1 --size=1G --runtime=30 --gtod_reduce=1 2>/dev/null |
           grep "IOPS=" | head -1 | grep -oP 'IOPS=\K[0-9]+')
-        RESULTS[disk_iops]=${FIO_RESULT:-0}
+        RESULTS[disk_iops]=''${FIO_RESULT:-0}
         echo "    Random Read IOPS: ''${FIO_RESULT:-N/A}"
         
         # Latency Test
@@ -597,7 +569,7 @@ in
         if command -v cyclictest &> /dev/null; then
           LATENCY=$(cyclictest -l10000 -m -Sp90 -i200 -h400 2>/dev/null | 
             grep "Avg Latencies" | awk '{print $4}')
-          RESULTS[avg_latency_us]=${LATENCY:-0}
+          RESULTS[avg_latency_us]=''${LATENCY:-0}
           echo "    Avg Latency: ''${LATENCY:-N/A} us"
         else
           echo "    cyclictest not available - skipping"
@@ -620,11 +592,11 @@ in
           "timestamp": "$TIMESTAMP",
           "kernel": "$(uname -r)",
           "results": {
-            "cpu_events_per_sec": ${RESULTS[cpu_events_per_sec]:-0},
-            "mem_read_mib_sec": "${RESULTS[mem_read_mib_sec]:-0}",
-            "mem_write_mib_sec": "${RESULTS[mem_write_mib_sec]:-0}",
-            "disk_iops": ${RESULTS[disk_iops]:-0},
-            "avg_latency_us": ${RESULTS[avg_latency_us]:-0}
+            "cpu_events_per_sec": ''${RESULTS[cpu_events_per_sec]:-0},
+            "mem_read_mib_sec": "''${RESULTS[mem_read_mib_sec]:-0}",
+            "mem_write_mib_sec": "''${RESULTS[mem_write_mib_sec]:-0}",
+            "disk_iops": ''${RESULTS[disk_iops]:-0},
+            "avg_latency_us": ''${RESULTS[avg_latency_us]:-0}
           }
         }
         EOF

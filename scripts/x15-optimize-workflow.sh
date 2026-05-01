@@ -9,11 +9,12 @@
 set -euo pipefail
 
 # Configuration
-readonly VERSION="1.0.0"
+readonly VERSION="1.1.0"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly NIXOS_DIR="/etc/nixos"
 readonly LOG_FILE="/tmp/x15-optimization-$(date +%Y%m%d_%H%M%S).log"
 readonly BACKUP_DIR="/etc/nixos/.backup/$(date +%Y%m%d_%H%M%S)"
+readonly FLAKE_TARGET="/etc/nixos#x15xs"
 
 # Colors
 readonly RED='\033[0;31m'
@@ -68,6 +69,19 @@ dryrun() {
     fi
     log "Executing: $*"
     eval "$@"
+}
+
+run_logged() {
+    local label="$1"
+    shift
+
+    step "$label"
+    if "$@" 2>&1 | tee -a "$LOG_FILE"; then
+        checkpoint "$label"
+    else
+        error "$label failed"
+        return 1
+    fi
 }
 
 checkpoint() {
@@ -147,13 +161,17 @@ validate_backup() {
     
     if [ ! -d "$BACKUP_DIR" ]; then
         info "Creating backup directory..."
-        mkdir -p "$BACKUP_DIR"
+        mkdir -p "$BACKUP_DIR/source"
     fi
     
     # Create backup of current configuration
     info "Creating configuration backup..."
     if [ $DRY_RUN -eq 0 ]; then
-        cp -r "$NIXOS_DIR" "$BACKUP_DIR/"
+        tar \
+            --exclude='.backup' \
+            --exclude='.git' \
+            -C "$NIXOS_DIR" \
+            -cf - . | tar -C "$BACKUP_DIR/source" -xf -
         log "Backup saved to: $BACKUP_DIR"
     else
         log "Would create backup at: $BACKUP_DIR"
@@ -175,19 +193,25 @@ phase_kernel_optimization() {
     # The configuration is handled by the NixOS module
     # This phase validates the configuration can be applied
     
-    if [ -f "$NIXOS_DIR/modules/performance-enhanced.nix" ]; then
-        info "Enhanced performance module found"
-        checkpoint "Performance module present"
+    if [ -f "$NIXOS_DIR/modules/performance.nix" ] && [ -f "$NIXOS_DIR/modules/performance-enhanced.nix" ]; then
+        info "Performance modules found"
+        checkpoint "Performance modules present"
     else
-        warn "Enhanced performance module not found"
+        warn "Performance modules not found"
         return 1
+    fi
+
+    if grep -q "linuxPackages_7_0" "$NIXOS_DIR/modules/boot.nix"; then
+        checkpoint "Kernel 7.x package path configured"
+    else
+        warn "Kernel 7.x package path not found in boot module"
     fi
     
     # Validate kernel parameters
     info "Validating kernel configuration..."
-    local required_params=("preempt=full" "threadirqs" "mitigations=off")
+    local required_params=("preempt=full" "threadirqs" "skew_tick=1")
     for param in "${required_params[@]}"; do
-        if grep -q "$param" "$NIXOS_DIR/modules/performance-enhanced.nix"; then
+        if grep -q "$param" "$NIXOS_DIR/modules/performance.nix"; then
             checkpoint "Kernel param: $param"
         else
             warn "Kernel param not found: $param"
@@ -243,20 +267,18 @@ phase_quickshell_integration() {
     
     step "Validating Quickshell configuration..."
     
-    # Check Quickshell data provider
-    if command -v x15-quickshell-provider &>/dev/null; then
-        info "Quickshell data provider available"
-        checkpoint "Data provider available"
+    if [ -f "$NIXOS_DIR/home/desktop/end4/overrides/ResourceService.qml" ]; then
+        info "ResourceService override present"
+        checkpoint "ResourceService present"
     else
-        warn "Data provider not in PATH"
+        warn "ResourceService override missing"
     fi
     
-    # Check ResourceWidget
-    if [ -f "$HOME/.config/quickshell/ii/modules/ii/bar/ResourceWidget.qml" ]; then
-        info "ResourceWidget installed"
-        checkpoint "ResourceWidget present"
+    if [ -f "$NIXOS_DIR/home/desktop/end4/overrides/Resources.qml" ] && [ -f "$NIXOS_DIR/home/desktop/end4/overrides/ResourcesPopup.qml" ]; then
+        info "Resources bar overrides present"
+        checkpoint "Resources overrides present"
     else
-        warn "ResourceWidget not found"
+        warn "Resources bar overrides missing"
     fi
     
     # Validate data directory
@@ -271,8 +293,36 @@ phase_quickshell_integration() {
     return 0
 }
 
+phase_display_sessions() {
+    section "Phase 4: Display Sessions"
+
+    step "Validating greetd, Hyprland, and i3 session wiring..."
+
+    if grep -q "uwsm start -e -D Hyprland hyprland.desktop" "$NIXOS_DIR/hosts/x15xs/default.nix"; then
+        checkpoint "Hyprland UWSM launcher configured"
+    else
+        warn "Hyprland UWSM launcher not found"
+    fi
+
+    if grep -q -- "--sessions" "$NIXOS_DIR/hosts/x15xs/default.nix" && \
+       grep -q -- "--xsessions" "$NIXOS_DIR/hosts/x15xs/default.nix"; then
+        checkpoint "greetd session chooser configured"
+    else
+        warn "greetd session chooser flags missing"
+    fi
+
+    if [ -f "$NIXOS_DIR/modules/i3-session.nix" ] && [ -f "$NIXOS_DIR/home/desktop/i3/config" ]; then
+        info "i3 fallback session files present"
+        checkpoint "i3 session present"
+    else
+        warn "i3 fallback session files missing"
+    fi
+
+    return 0
+}
+
 phase_system_cleanup() {
-    section "Phase 4: System Cleanup"
+    section "Phase 5: System Cleanup"
     
     step "Running system audit..."
     
@@ -307,8 +357,30 @@ phase_system_cleanup() {
     return 0
 }
 
+phase_dry_build_validation() {
+    section "Phase 6: Dry Build Validation"
+
+    run_logged "Workflow script shell syntax" bash -n "$SCRIPT_DIR/x15-optimize-workflow.sh" || return 1
+    run_logged "Kernel dry-build" bash -lc "cd '$NIXOS_DIR' && nix build .#nixosConfigurations.x15xs.config.system.build.kernel --dry-run --show-trace" || return 1
+    run_logged "NixOS toplevel dry-build" bash -lc "cd '$NIXOS_DIR' && nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --dry-run --show-trace" || return 1
+
+    if [ -f "$NIXOS_DIR/tests/test_migration.py" ]; then
+        if command -v pytest >/dev/null 2>&1; then
+            run_logged "Pytest structural checks" bash -lc "cd '$NIXOS_DIR' && pytest -q tests/test_migration.py" || return 1
+        else
+            run_logged \
+                "Pytest structural checks (ephemeral nix shell)" \
+                bash -lc "cd '$NIXOS_DIR' && nix-shell -p python3Packages.pytest python3Packages.hypothesis --run 'pytest -q tests/test_migration.py'" || return 1
+        fi
+    else
+        warn "tests/test_migration.py missing"
+    fi
+
+    return 0
+}
+
 phase_nixos_rebuild() {
-    section "Phase 5: NixOS Rebuild"
+    section "Phase 7: NixOS Rebuild"
     
     if [ $DRY_RUN -eq 1 ]; then
         info "Dry-run mode: Skipping rebuild"
@@ -323,7 +395,7 @@ phase_nixos_rebuild() {
     step "Running nixos-rebuild switch..."
     
     # Build and switch
-    if nixos-rebuild switch --flake "$NIXOS_DIR#x15xs" 2>&1 | tee -a "$LOG_FILE"; then
+    if nixos-rebuild switch --flake "$FLAKE_TARGET" 2>&1 | tee -a "$LOG_FILE"; then
         log "Rebuild successful"
         checkpoint "NixOS rebuild successful"
     else
@@ -390,7 +462,9 @@ Commands:
   kernel         Kernel optimization only
   monitor        Hardware monitoring setup only
   quickshell     Quickshell integration only
+  sessions       Display manager / window manager validation only
   cleanup        System cleanup only
+  dry-build      Run the dry build / validation pipeline
   rebuild        NixOS rebuild only
   test           Run validation tests only
   status         Show system status
@@ -440,7 +514,7 @@ parse_args() {
                 show_help
                 exit 0
                 ;;
-            full|kernel|monitor|quickshell|cleanup|rebuild|test|status)
+            full|kernel|monitor|quickshell|sessions|cleanup|dry-build|rebuild|test|status)
                 COMMAND="$1"
                 shift
                 ;;
@@ -483,7 +557,9 @@ main() {
             phase_kernel_optimization || true
             phase_hardware_monitoring || true
             phase_quickshell_integration || true
+            phase_display_sessions || true
             phase_system_cleanup || true
+            phase_dry_build_validation || exit 1
             phase_nixos_rebuild || exit 1
             run_benchmarks || true
             run_thermal_validation || true
@@ -500,9 +576,17 @@ main() {
             validate_environment || exit 1
             phase_quickshell_integration || exit 1
             ;;
+        sessions)
+            validate_environment || exit 1
+            phase_display_sessions || exit 1
+            ;;
         cleanup)
             validate_environment || exit 1
             phase_system_cleanup || exit 1
+            ;;
+        dry-build)
+            validate_environment || exit 1
+            phase_dry_build_validation || exit 1
             ;;
         rebuild)
             validate_environment || exit 1
@@ -510,6 +594,8 @@ main() {
             phase_nixos_rebuild || exit 1
             ;;
         test)
+            validate_environment || exit 1
+            phase_dry_build_validation || exit 1
             run_benchmarks || true
             run_thermal_validation || true
             ;;

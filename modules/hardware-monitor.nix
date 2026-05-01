@@ -506,15 +506,22 @@ let
       
       # Check NBFC configuration
       if [ -f /etc/nbfc/nbfc.json ]; then
+        MODEL_CONFIG="$(${pkgs.jq}/bin/jq -r '.SelectedConfigId // empty' /etc/nbfc/nbfc.json 2>/dev/null || true)"
+        if [ -z "$MODEL_CONFIG" ] || [ ! -f "$MODEL_CONFIG" ]; then
+          error "NBFC selected model config not found: ''${MODEL_CONFIG:-unset}"
+          return 1
+        fi
+
         log ">>> NBFC Configuration:"
-        ${pkgs.jq}/bin/jq '.FanConfigurations[0].TemperatureThresholds' /etc/nbfc/nbfc.json 2>/dev/null |
+        log ">>> Selected Model: $(${pkgs.jq}/bin/jq -r '.NotebookModel // "unknown"' "$MODEL_CONFIG" 2>/dev/null)"
+        ${pkgs.jq}/bin/jq '.FanConfigurations[0].TemperatureThresholds' "$MODEL_CONFIG" 2>/dev/null |
           while read line; do
             log "    $line"
           done
         
         log ""
-        log ">>> Critical Temperature: $(cat /etc/nbfc/nbfc.json | ${pkgs.jq}/bin/jq -r '.CriticalTemperature')°C"
-        log ">>> Poll Interval: $(cat /etc/nbfc/nbfc.json | ${pkgs.jq}/bin/jq -r '.EcPollInterval')ms"
+        log ">>> Critical Temperature: $(${pkgs.jq}/bin/jq -r '.CriticalTemperature' "$MODEL_CONFIG")°C"
+        log ">>> Poll Interval: $(${pkgs.jq}/bin/jq -r '.EcPollInterval' "$MODEL_CONFIG")ms"
       else
         error "NBFC config not found at /etc/nbfc/nbfc.json"
       fi
@@ -736,7 +743,6 @@ in
     # ── Monitoring Packages ──────────────────────────────────────────────────
     environment.systemPackages = [
       pkgs.lm_sensors
-      pkgs.sensors
       pkgs.stress-ng
       pkgs.sysbench
       monitorDaemon

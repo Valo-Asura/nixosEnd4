@@ -20,8 +20,25 @@ let
     export SDL_VIDEODRIVER=wayland
     export CLUTTER_BACKEND=wayland
 
-    exec ${config.programs.hyprland.package}/bin/Hyprland
+    exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop
   '';
+  sessionShare = "${config.services.displayManager.sessionData.desktops}/share";
+  greetdCommand = lib.escapeShellArgs [
+    "${pkgs.tuigreet}/bin/tuigreet"
+    "--cmd"
+    "${startHyprland}/bin/start-hyprland"
+    "--sessions"
+    "${sessionShare}/wayland-sessions"
+    "--xsessions"
+    "${sessionShare}/xsessions"
+    "--remember"
+    "--remember-session"
+    "--remember-user-session"
+    "--asterisks"
+    "--greeting"
+    "asura"
+    "--time"
+  ];
 in
 {
   imports = [
@@ -43,7 +60,6 @@ in
     performanceEnhanced = {
       enable = true;
       profile = "balanced";           # Options: max | balanced | cool
-      kernelVersion = "latest";        # Options: latest | zen | cachyos | xanmod
       nbfcProfile = "Colorful X15 AT 22";
       disableIPv6 = false;
       debugMode = false;
@@ -60,12 +76,7 @@ in
       };
     };
 
-    quickshellIntegration = {
-      enable = true;
-      updateInterval = 2000;           # Widget refresh in ms
-      showGpu = true;
-      showFan = true;
-    };
+    i3Session.enable = true;
 
     systemCleanup = {
       enable = true;
@@ -148,8 +159,9 @@ in
 
   services.greetd = {
     enable = true;
+    useTextGreeter = true;
     settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --cmd ${startHyprland}/bin/start-hyprland --remember --remember-user-session --asterisks --greeting asura --time";
+      command = greetdCommand;
       user = "greeter";
     };
   };
@@ -165,6 +177,7 @@ in
 
   programs.hyprland = {
     enable = true;
+    withUWSM = true;
     package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
     portalPackage =
       inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;

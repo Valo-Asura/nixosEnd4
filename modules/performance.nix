@@ -5,13 +5,14 @@ let
   isMax = cfg.profile == "max";
   isBalanced = cfg.profile == "balanced";
   isCool = cfg.profile == "cool";
+  enhancedEnabled = config.modules.performanceEnhanced.enable;
 
   # ── Custom NBFC fan curve for Colorful X15 AT 22 ──────────────────────────
   # Smoother than upstream: starts quiet, ramps progressively, avoids
   # constant full-blast by giving more headroom before hitting 100%.
   # Critical is set to 90°C (BIOS emergency kicks in at ~95°C).
-  nbfcConfig = builtins.toJSON {
-    NotebookModel = "Colorful X15 AT 22";
+  nbfcModelConfig = builtins.toJSON {
+    NotebookModel = cfg.nbfcProfile;
     Author = "nixos-asura";
     EcPollInterval = 1000; # Poll every 1 s (upstream: 100 ms — needless CPU wake)
     ReadWriteWords = false;
@@ -65,6 +66,10 @@ let
       }
     ];
   };
+
+  nbfcServiceConfig = builtins.toJSON {
+    SelectedConfigId = "/etc/nbfc/configs/${cfg.nbfcProfile}.json";
+  };
 in
 {
   options.modules.performance = {
@@ -91,80 +96,84 @@ in
   config = lib.mkIf cfg.enable {
 
     # ── Kernel parameters ─────────────────────────────────────────────────────
-    boot.kernelParams = [
-      "preempt=full"   # Full preemption — best desktop latency
-      "threadirqs"     # Force threaded IRQs — reduces IRQ latency jitter
-      "mitigations=off" # Disable Spectre/Meltdown mitigations (trusted single-user)
-      "nvidia-drm.modeset=1"
+    # When the enhanced module is also enabled, this baseline remains the owner
+    # of the production tuning and the enhanced layer stays additive.
+    boot = {
+      kernelParams = [
+        "preempt=full"   # Full preemption — best desktop latency
+        "threadirqs"     # Force threaded IRQs — reduces IRQ latency jitter
+        "mitigations=off" # Disable Spectre/Meltdown mitigations (trusted single-user)
+        "nvidia-drm.modeset=1"
 
-      # Intel eDP: PSR causes flickering on some Alder Lake panels at high refresh.
-      "i915.enable_psr=0"
-      "i915.enable_fbc=0"
-      # Do NOT set i915.enable_dc=0 — DC6 is needed for iGPU runtime PM.
-      # Removing it restores proper C10 package states on AC.
+        # Intel eDP: PSR causes flickering on some Alder Lake panels at high refresh.
+        "i915.enable_psr=0"
+        "i915.enable_fbc=0"
+        # Do NOT set i915.enable_dc=0 — DC6 is needed for iGPU runtime PM.
+        # Removing it restores proper C10 package states on AC.
 
-      # Reduce cross-core timer lock contention on hybrid CPUs.
-      "skew_tick=1"
+        # Reduce cross-core timer lock contention on hybrid CPUs.
+        "skew_tick=1"
 
-      # Suppress noisy softlockup messages during heavy compile/render loads.
-      "nosoftlockup"
-    ]
-    ++ lib.optionals isMax  [ "intel_idle.max_cstate=1" ]
-    ++ lib.optionals (!isMax) [ "intel_idle.max_cstate=9" ];
+        # Suppress noisy softlockup messages during heavy compile/render loads.
+        "nosoftlockup"
+      ]
+      ++ lib.optionals isMax [ "intel_idle.max_cstate=1" ]
+      ++ lib.optionals (!isMax) [ "intel_idle.max_cstate=9" ];
 
-    # Load BBR congestion control module at early boot.
-    boot.kernelModules = [ "tcp_bbr" ];
+      # Load BBR congestion control module at early boot.
+      kernelModules = [ "tcp_bbr" ];
 
-    # ── Kernel sysctl ─────────────────────────────────────────────────────────
-    boot.kernel.sysctl = {
+      # ── Kernel sysctl ───────────────────────────────────────────────────────
+      kernel.sysctl = {
 
-      # ── Memory ──────────────────────────────────────────────────────────────
-      # Low swappiness: keep working set in RAM; only offload cold pages to zram.
-      "vm.swappiness" = 10;
-      # Reduce pressure to drop dentry/inode cache; good for dev workloads.
-      "vm.vfs_cache_pressure" = 50;
+        # ── Memory ────────────────────────────────────────────────────────────
+        # Low swappiness: keep working set in RAM; only offload cold pages to zram.
+        "vm.swappiness" = 10;
+        # Reduce pressure to drop dentry/inode cache; good for dev workloads.
+        "vm.vfs_cache_pressure" = 50;
 
-      # NVMe writeback tuning: flush smaller, more frequent batches.
-      # Reduces peak dirty-memory spikes and cuts worst-case write latency.
-      "vm.dirty_background_ratio" = 5;      # Start async writeback at 5% RAM dirty
-      "vm.dirty_ratio" = 10;                # Block new writes at 10% RAM dirty
-      "vm.dirty_writeback_centisecs" = 500; # Flush every 5 s (kernel default: 15 s)
-      "vm.dirty_expire_centisecs" = 3000;   # Expire dirty pages after 30 s
+        # NVMe writeback tuning: flush smaller, more frequent batches.
+        # Reduces peak dirty-memory spikes and cuts worst-case write latency.
+        "vm.dirty_background_ratio" = 5;      # Start async writeback at 5% RAM dirty
+        "vm.dirty_ratio" = 10;                # Block new writes at 10% RAM dirty
+        "vm.dirty_writeback_centisecs" = 500; # Flush every 5 s (kernel default: 15 s)
+        "vm.dirty_expire_centisecs" = 3000;   # Expire dirty pages after 30 s
 
-      # Disable proactive background compaction on 16 GB machines.
-      # It causes latency spikes with no real benefit when RAM is plentiful.
-      "vm.compaction_proactiveness" = 0;
+        # Disable proactive background compaction on 16 GB machines.
+        # It causes latency spikes with no real benefit when RAM is plentiful.
+        "vm.compaction_proactiveness" = 0;
 
-      # Reduce minimum free memory held in reserve (default is too conservative).
-      # 64 MB is sufficient on 16 GB with zram as a safety net.
-      "vm.min_free_kbytes" = 65536;
+        # Reduce minimum free memory held in reserve (default is too conservative).
+        # 64 MB is sufficient on 16 GB with zram as a safety net.
+        "vm.min_free_kbytes" = 65536;
 
-      # ── CPU / Scheduler ──────────────────────────────────────────────────────
-      # Disable NUMA balancing (single NUMA node on this CPU).
-      "kernel.numa_balancing" = 0;
-      # Autogroup: shell pipelines and app groups get their own sched group,
-      # keeping interactive latency low even under background compile load.
-      "kernel.sched_autogroup_enabled" = 1;
-      # Increase migration cost threshold — reduces cross-core cache thrashing
-      # on the P-core / E-core hybrid topology of the i5-12500H.
-      "kernel.sched_migration_cost_ns" = 500000;
+        # ── CPU / Scheduler ───────────────────────────────────────────────────
+        # Disable NUMA balancing (single NUMA node on this CPU).
+        "kernel.numa_balancing" = 0;
+        # Autogroup: shell pipelines and app groups get their own sched group,
+        # keeping interactive latency low even under background compile load.
+        "kernel.sched_autogroup_enabled" = 1;
+        # Increase migration cost threshold — reduces cross-core cache thrashing
+        # on the P-core / E-core hybrid topology of the i5-12500H.
+        "kernel.sched_migration_cost_ns" = 500000;
 
-      # ── Networking ──────────────────────────────────────────────────────────
-      # BBR v1 congestion control: lower bufferbloat on WiFi 6 / fast links.
-      "net.core.default_qdisc" = "fq";
-      "net.ipv4.tcp_congestion_control" = "bbr";
+        # ── Networking ────────────────────────────────────────────────────────
+        # BBR v1 congestion control: lower bufferbloat on WiFi 6 / fast links.
+        "net.core.default_qdisc" = "fq";
+        "net.ipv4.tcp_congestion_control" = "bbr";
 
-      # TCP Fast Open (3 = client + server): saves a round-trip on retries.
-      "net.ipv4.tcp_fastopen" = 3;
+        # TCP Fast Open (3 = client + server): saves a round-trip on retries.
+        "net.ipv4.tcp_fastopen" = 3;
 
-      # Larger receive queue for WiFi 6 burst / USB-C dock scenarios.
-      "net.core.netdev_max_backlog" = 4096;
+        # Larger receive queue for WiFi 6 burst / USB-C dock scenarios.
+        "net.core.netdev_max_backlog" = 4096;
 
-      # Socket buffer auto-tuning ceilings (16 MiB).
-      "net.core.rmem_max" = 16777216;
-      "net.core.wmem_max" = 16777216;
-      "net.ipv4.tcp_rmem" = "4096 131072 16777216";
-      "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+        # Socket buffer auto-tuning ceilings (16 MiB).
+        "net.core.rmem_max" = 16777216;
+        "net.core.wmem_max" = 16777216;
+        "net.ipv4.tcp_rmem" = "4096 131072 16777216";
+        "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+      };
     };
 
     # ── Zram swap ─────────────────────────────────────────────────────────────
@@ -178,79 +187,97 @@ in
     };
 
     # ── TLP power management ─────────────────────────────────────────────────
-    services.power-profiles-daemon.enable = false;
+    services = {
+      power-profiles-daemon.enable = false;
 
-    services.tlp = {
-      enable = true;
-      settings = {
-        # Intel pstate HWP governor selection.
-        CPU_SCALING_GOVERNOR_ON_AC  = if isCool then "powersave" else "performance";
-        CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+      tlp = {
+        enable = true;
+        settings = {
+          # Intel pstate HWP governor selection.
+          CPU_SCALING_GOVERNOR_ON_AC  = if isCool then "powersave" else "performance";
+          CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
 
-        # Energy Performance Preference — the real lever for HWP on Alder Lake.
-        CPU_ENERGY_PERF_POLICY_ON_AC  = if isCool then "balance_power" else "performance";
-        CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+          # Energy Performance Preference — the real lever for HWP on Alder Lake.
+          CPU_ENERGY_PERF_POLICY_ON_AC  = if isCool then "balance_power" else "performance";
+          CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
 
-        CPU_BOOST_ON_AC  = if isCool then 0 else 1;
-        CPU_BOOST_ON_BAT = 0;
+          CPU_BOOST_ON_AC  = if isCool then 0 else 1;
+          CPU_BOOST_ON_BAT = 0;
 
-        CPU_MAX_PERF_ON_AC =
-          if isMax then 100 else if isBalanced then 95 else 70;
-        CPU_MAX_PERF_ON_BAT = if isCool then 45 else 60;
+          CPU_MAX_PERF_ON_AC =
+            if isMax then 100 else if isBalanced then 95 else 70;
+          CPU_MAX_PERF_ON_BAT = if isCool then 45 else 60;
 
-        PLATFORM_PROFILE_ON_AC =
-          if isMax then "performance" else if isCool then "low-power" else "balanced";
-        PLATFORM_PROFILE_ON_BAT = "low-power";
+          PLATFORM_PROFILE_ON_AC =
+            if isMax then "performance" else if isCool then "low-power" else "balanced";
+          PLATFORM_PROFILE_ON_BAT = "low-power";
 
-        RUNTIME_PM_ON_AC  = if isMax then "on" else "auto";
-        RUNTIME_PM_ON_BAT = "auto";
+          RUNTIME_PM_ON_AC  = if isMax then "on" else "auto";
+          RUNTIME_PM_ON_BAT = "auto";
 
-        PCIE_ASPM_ON_AC  = if isCool then "powersupersave" else "default";
-        PCIE_ASPM_ON_BAT = "powersupersave";
+          PCIE_ASPM_ON_AC  = if isCool then "powersupersave" else "default";
+          PCIE_ASPM_ON_BAT = "powersupersave";
 
-        # Kyber I/O scheduler: latency-aware, low-overhead for NVMe SSDs.
-        DISK_IOSCHED = "kyber";
+          # Kyber I/O scheduler: latency-aware, low-overhead for NVMe SSDs.
+          DISK_IOSCHED = "kyber";
 
-        # USB autosuspend on battery; keep awake on AC for peripherals.
-        USB_AUTOSUSPEND = 0;
+          # USB autosuspend on battery; keep awake on AC for peripherals.
+          USB_AUTOSUSPEND = 0;
 
-        # S2idle (modern standby) is configured via mem_sleep_default below.
-        MEM_SLEEP_ON_BAT = "deep";
-        MEM_SLEEP_ON_AC  = "deep";
+          # S2idle (modern standby) is configured via mem_sleep_default below.
+          MEM_SLEEP_ON_BAT = "deep";
+          MEM_SLEEP_ON_AC  = "deep";
+        };
       };
-    };
 
-    # ── Intel thermald ────────────────────────────────────────────────────────
-    # Works alongside TLP: TLP controls governors/EPP, thermald controls
-    # thermal throttling via MSR / RAPL when temps approach critical levels.
-    # They do not conflict as they manage different layers.
-    services.thermald.enable = true;
+      thermald.enable = true;
 
-    # ── systemd-oomd: memory pressure protection ──────────────────────────────
-    systemd.oomd = {
-      enable = true;
-      # Kill memory-hungry cgroups before the kernel OOM killer fires.
-      enableRootSlice = true;
-      enableSystemSlice = true;
-      enableUserSlices = true;
+      ananicy = {
+        enable = true;
+        package = pkgs.ananicy-cpp;
+        rulesProvider = pkgs.ananicy-cpp;
+      };
     };
 
     # Put nix-daemon builds in their own slice so OOM pressure from large
     # builds (e.g. rebuilding LLVM) gets handled without killing the desktop.
-    systemd.slices."nix-daemon" = {
-      sliceConfig = {
-        ManagedOOMMemoryPressure = "kill";
-        ManagedOOMMemoryPressureLimit = "60%";
-      };
-    };
-    systemd.services.nix-daemon.serviceConfig.Slice = "nix-daemon.slice";
+    systemd = lib.mkMerge [
+      {
+        oomd = {
+          enable = true;
+          # Kill memory-hungry cgroups before the kernel OOM killer fires.
+          enableRootSlice = true;
+          enableSystemSlice = true;
+          enableUserSlices = true;
+        };
 
-    # ── Ananicy-cpp process priority daemon ───────────────────────────────────
-    services.ananicy = {
-      enable = true;
-      package = pkgs.ananicy-cpp;
-      rulesProvider = pkgs.ananicy-cpp;
-    };
+        services.nbfc_service = {
+          description = "Notebook FanControl service";
+          wantedBy = [ "multi-user.target" ];
+          after = [ "systemd-udevd.service" ];
+          path = [ pkgs.kmod ];
+          serviceConfig = {
+            Type = "simple";
+            ExecStart = "${pkgs.nbfc-linux}/bin/nbfc_service --config-file /etc/nbfc/nbfc.json";
+            Restart = "on-failure";
+            RestartSec = 3;
+            # nbfc needs raw EC hardware access (/dev/port, acpi_ec, ec_sys).
+            # /dev/ec does NOT exist on this machine — do NOT use ProtectSystem or
+            # ReadWritePaths or the service will fail with status=226/NAMESPACE.
+          };
+        };
+      }
+
+      {
+        slices."nix-daemon" = {
+          sliceConfig = {
+            ManagedOOMMemoryPressure = "kill";
+            ManagedOOMMemoryPressureLimit = "60%";
+          };
+        };
+        services.nix-daemon.serviceConfig.Slice = "nix-daemon.slice";
+      }
+    ];
 
     # ── Fan control: custom NBFC curve ───────────────────────────────────────
     # Smoother and quieter than upstream "Colorful X15 AT 22" config:
@@ -259,22 +286,9 @@ in
     # - Progressive ramp with 5°C hysteresis on each step
     # - Full-blast threshold raised to 80°C (upstream: 76°C)
     # - Critical raised to 90°C (BIOS emergency kicks in at ~95°C)
-    environment.etc."nbfc/nbfc.json".text = nbfcConfig;
-
-    systemd.services.nbfc_service = {
-      description = "Notebook FanControl service";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "systemd-udevd.service" ];
-      path = [ pkgs.kmod ];
-      serviceConfig = {
-        Type = "simple";
-        ExecStart = "${pkgs.nbfc-linux}/bin/nbfc_service --config-file /etc/nbfc/nbfc.json";
-        Restart = "on-failure";
-        RestartSec = 3;
-        # nbfc needs raw EC hardware access (/dev/port, acpi_ec, ec_sys).
-        # /dev/ec does NOT exist on this machine — do NOT use ProtectSystem or
-        # ReadWritePaths or the service will fail with status=226/NAMESPACE.
-      };
+    environment.etc = {
+      "nbfc/configs/${cfg.nbfcProfile}.json".text = nbfcModelConfig;
+      "nbfc/nbfc.json".text = nbfcServiceConfig;
     };
 
 

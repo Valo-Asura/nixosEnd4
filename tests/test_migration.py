@@ -194,17 +194,18 @@ def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
         "black",
         "debugpy",
         "ruff",
-        'wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v3"',
+        'wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v5"',
         '"workbench.colorTheme" == "GitHub Dark Dimmed"',
         '"window.commandCenter" == false',
         '"telemetry.telemetryLevel" == "off"',
         '"update.mode" == "none"',
-        '"python.languageServer" == "Pylance"',
+        '"python.languageServer" == $lang_server',
         '"python.analysis.typeCheckingMode" == "basic"',
         '"ruff.nativeServer" == "on"',
         '"editor.defaultFormatter": "ms-python.black-formatter"',
         'merge_settings "Code"',
         'merge_settings "Cursor"',
+        'merge_settings "Windsurf"',
         'merge_settings "Kiro"',
         'merge_settings "Antigravity"',
     ]:
@@ -287,7 +288,7 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "bar.weather = {",
         "enable = true;",
         "enableGPS = false;",
-        'city = "Rishikesh, Uttarakhand, India 249204";',
+        'city = "Gumaniwala, Uttarakhand, India 249204";',
         "useUSCS = false;",
         "fetchInterval = 10;",
         's|interval: 200|interval: 1000|',
@@ -402,7 +403,7 @@ def test_hyprland_uses_classic_layout_and_perf_friendly_rules():
         "tap_button_map = lrm",
         "gestures {",
         "workspace_swipe_distance = 320",
-        "workspace_swipe_create_new = true",
+        "workspace_swipe_create_new = false",
         "no_focus_fallback = true",
         "dim_inactive = false",
         "passes = 1",
@@ -508,7 +509,7 @@ def test_portal_module_keeps_hyprland_and_gtk_backends():
     assert contains_literal(portal, "services.gvfs.enable = true;")
     assert contains_literal(portal, "services.udisks2.enable = true;")
     assert contains_literal(portal, "extraPortals = lib.mkForce [")
-    assert contains_literal(portal, "config.programs.hyprland.portalPackage")
+    assert contains_literal(portal, "programs.hyprland.enable already inserts the Hyprland portal package")
     assert contains_literal(portal, "pkgs.xdg-desktop-portal-gtk")
     assert not_contains_literal(portal, 'config.common.default = lib.mkForce [ "hyprland" ];')
 
@@ -551,11 +552,8 @@ def test_hybrid_gpu_and_ollama_defaults_stay_resource_oriented():
 
     for literal in [
         'keepAlive = "2m";',
-        "guiEnable = false;",
+        "guiEnable = true;",
         '"nvidia.NVreg_TemporaryFilePath=/var/tmp"',
-        "batteryCare = {",
-        "stopThreshold = 90;",
-        "defaultEnabled = true;",
     ]:
         assert contains_literal(configuration, literal), f"Missing configuration literal: {literal}"
 
@@ -585,6 +583,40 @@ def test_networking_error_noise_fixes_are_enabled():
         "wsdd",
     ]:
         assert contains_literal(configuration, literal), f"Missing networking/runtime fix literal: {literal}"
+
+
+def test_hyprland_launcher_uses_uwsm_session_management():
+    configuration = read_file("hosts/x15xs/default.nix")
+    for literal in [
+        'startHyprland = pkgs.writeShellScriptBin "start-hyprland"',
+        'exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop',
+        "withUWSM = true;",
+    ]:
+        assert contains_literal(configuration, literal), f"Missing Hyprland launcher literal: {literal}"
+
+
+def test_nbfc_config_is_split_between_service_state_and_model_curve():
+    performance = read_file("modules/performance.nix")
+    performance_enhanced = read_file("modules/performance-enhanced.nix")
+    hardware_monitor = read_file("modules/hardware-monitor.nix")
+
+    for literal in [
+        'SelectedConfigId = "/etc/nbfc/configs/${cfg.nbfcProfile}.json";',
+        '"nbfc/configs/${cfg.nbfcProfile}.json".text',
+        '"nbfc/nbfc.json".text = nbfcServiceConfig;',
+    ]:
+        assert contains_literal(performance, literal), f"Missing performance NBFC literal: {literal}"
+        assert contains_literal(
+            performance_enhanced, literal
+        ), f"Missing enhanced NBFC literal: {literal}"
+
+    assert contains_literal(performance, "enhancedEnabled = config.modules.performanceEnhanced.enable;")
+    assert not_contains_literal(performance, "lib.mkIf (!enhancedEnabled)")
+    assert contains_literal(
+        hardware_monitor,
+        "MODEL_CONFIG=\"$(${pkgs.jq}/bin/jq -r '.SelectedConfigId // empty' /etc/nbfc/nbfc.json 2>/dev/null || true)\"",
+    )
+    assert not_contains_literal(hardware_monitor, "pkgs.sensors")
 
 
 def test_battery_care_module_exposes_helpers_and_polkit_scope():
@@ -617,7 +649,8 @@ def test_vscode_settings_stay_mutable():
         'home.file."${config.xdg.configHome}/Code/User/settings.json".enable = lib.mkForce false;',
     )
     assert contains_literal(ide, "settings_need_merge() {")
-    assert contains_literal(ide, "for app in Code Cursor Kiro Antigravity; do")
+    assert contains_literal(ide, "for app in Code Cursor Windsurf; do")
+    assert contains_literal(ide, "for app in Kiro Antigravity; do")
 
 
 def test_packages_module_drops_duplicate_gui_file_managers():
@@ -626,13 +659,90 @@ def test_packages_module_drops_duplicate_gui_file_managers():
     assert contains_literal(packages, "uv")
     assert contains_literal(packages, "ollama")
     assert contains_literal(packages, 'pkgs."claude-code"')
-    assert contains_literal(packages, "python3")
-    assert contains_literal(packages, "python3Packages.conda")
-    assert contains_literal(packages, "python3Packages.jupyterlab")
+    assert contains_literal(packages, "yazi")
+    assert contains_literal(packages, "wl-clipboard")
+    assert contains_literal(packages, "cliphist")
     assert contains_literal(packages, "vlc")
     assert not_contains_literal(packages, "nautilus")
     assert not_contains_literal(packages, "thunar")
     assert not_contains_literal(packages, "programs.firefox")
+
+
+def test_quickshell_resource_integration_uses_hwmon_json():
+    quickshell_module = read_file("home/desktop/quickshell-integration.nix")
+    resource_service = read_file("home/desktop/end4/overrides/ResourceService.qml")
+    resources_bar = read_file("home/desktop/end4/overrides/Resources.qml")
+    resources_popup = read_file("home/desktop/end4/overrides/ResourcesPopup.qml")
+
+    for literal in [
+        "pkgs.replaceVars ./end4/overrides/ResourceService.qml",
+        "pkgs.replaceVars ./end4/overrides/ResourcesPopup.qml",
+        '".config/quickshell/ii/modules/ii/bar/Resources.qml".source',
+        '".config/quickshell/ii/modules/ii/bar/ResourcesPopup.qml".source',
+        '".config/quickshell/ii/services/ResourceService.qml".source',
+    ]:
+        assert contains_literal(quickshell_module, literal), f"Missing quickshell module literal: {literal}"
+
+    for literal in [
+        "pragma Singleton",
+        'readonly property string dataPath: runtimeDir + "/x15-hwmon/hwmon.json"',
+        "FileView {",
+        "watchChanges: true",
+        "onTextChanged: root.refresh()",
+        "onFileChanged: reload()",
+        "cpuTemperatureText",
+        "cpuLoadText",
+        "cpuFrequencyText",
+    ]:
+        assert contains_literal(resource_service, literal), f"Missing resource service literal: {literal}"
+
+    assert contains_literal(resources_bar, "ResourceService.cpuTemperatureText")
+    assert contains_literal(resources_popup, 'label: Translation.tr("Temp:")')
+    assert contains_literal(resources_popup, 'label: Translation.tr("Load avg:")')
+    assert contains_literal(resources_popup, 'label: Translation.tr("Freq:")')
+
+
+def test_greetd_hyprland_and_i3_sessions_are_wired_together():
+    configuration = read_file("hosts/x15xs/default.nix")
+    i3_module = read_file("modules/i3-session.nix")
+    i3_config = read_file("home/desktop/i3/config")
+
+    for literal in [
+        "i3Session.enable = true;",
+        "--sessions",
+        "--xsessions",
+        "--remember-session",
+        "--remember-user-session",
+        "--greeting",
+        'exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop',
+    ]:
+        assert contains_literal(configuration, literal), f"Missing greetd/session literal: {literal}"
+
+    for literal in [
+        'enable = lib.mkEnableOption "X11 i3 fallback session";',
+        "windowManager.i3 = {",
+        "configFile = ../home/desktop/i3/config;",
+        "greenclipPkg = pkgs.haskellPackages.greenclip;",
+        "x15-i3-launcher",
+        "x15-i3-lock",
+        "x15-i3-clipboard",
+        "x15-i3-overview",
+        "x15-i3-wallpaper-menu",
+    ]:
+        assert contains_literal(i3_module, literal), f"Missing i3 module literal: {literal}"
+
+    for literal in [
+        "set $mod Mod4",
+        "exec_always --no-startup-id greenclip daemon",
+        "bindsym $mod+space exec $launcher",
+        "bindsym $mod+Shift+Tab exec $overview",
+        "bindsym Ctrl+l exec $lock",
+        "bindsym $mod+Shift+c exec $clipboard",
+        "bindsym $mod+Shift+p exec $wallpaper_random",
+        "bindsym $mod+F2 exec $night_shift",
+        'status_command i3status',
+    ]:
+        assert contains_literal(i3_config, literal), f"Missing i3 config literal: {literal}"
 
 
 def test_docs_match_the_current_end4_stack():

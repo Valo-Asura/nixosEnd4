@@ -851,15 +851,11 @@ EOF
     
     # ── Automatic Maintenance Services ─────────────────────────────────────
     
-    # Garbage collection
-    nix.gc.automatic = cfg.autoGc;
-    nix.gc.dates = cfg.cleanupInterval;
-    nix.gc.options = "--delete-older-than 30d";
+    # Garbage collection settings - use mkDefault to avoid conflicts with host config
+    nix.gc.automatic = lib.mkIf cfg.autoGc (lib.mkDefault true);
     
-    # Store optimisation
-    nix.settings.auto-optimise-store = cfg.autoOptimise;
-    nix.optimise.automatic = cfg.autoOptimise;
-    nix.optimise.dates = [ cfg.cleanupInterval ];
+    # Store optimisation - use mkDefault to avoid conflicts with host config
+    nix.settings.auto-optimise-store = lib.mkIf cfg.autoOptimise (lib.mkDefault true);
     
     # Journal size limit
     services.journald.extraConfig = ''

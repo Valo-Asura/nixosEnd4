@@ -110,7 +110,7 @@ in
     services.searx = {
       enable = true;
       package = pkgs.searxng;
-      runInUwsgi = false;
+      configureUwsgi = false;
       settings = {
         server = {
           port = searxngPort;

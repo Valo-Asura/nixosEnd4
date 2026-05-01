@@ -21,6 +21,7 @@
 
     # Desktop/session behavior.
     ../../home/desktop/hyprland.nix
+    ../../home/desktop/quickshell-integration.nix  # Quickshell UI integration
 
     # Shell environment.
     ../../home/shell/base.nix
@@ -40,6 +41,13 @@
     nanobot.enable = true;
     shell.enable = true;
     hyprland.enable = true;
+    
+    quickshellIntegration = {
+      enable = true;
+      updateInterval = 2000;
+      showGpu = true;
+      showFan = true;
+    };
   };
 
   programs.illogical-impulse = {
