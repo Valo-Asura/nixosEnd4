@@ -10,7 +10,17 @@ let
 in
 {
   options.modules.secureBoot = {
-    enable = lib.mkEnableOption "Secure Boot with Lanzaboote";
+    enable = lib.mkEnableOption "Secure Boot preparation (sbctl only)";
+
+    useLanzaboote = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable Lanzaboote for automatic kernel signing.
+        Requires lanzaboote flake input to be added to flake.nix.
+        See modules/secure-boot/README.md for setup instructions.
+      '';
+    };
 
     publicKeyFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
@@ -26,30 +36,45 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Lanzaboote replaces systemd-boot with a Secure Boot-capable bootloader.
-    # It signs the kernel, initrd, and boot files automatically on each rebuild.
-    boot.loader.systemd-boot.enable = lib.mkForce false;
+    # Install sbctl for Secure Boot key management
+    environment.systemPackages = with pkgs; [
+      sbctl # Secure Boot key management utility
+    ];
 
-    boot.lanzaboote = {
-      enable = true;
-      pkiBundle = "/etc/secureboot";
-    };
+    # Lanzaboote integration (requires flake input)
+    # To enable:
+    # 1. Add lanzaboote to flake.nix inputs
+    # 2. Import lanzaboote.nixosModules.lanzaboote in host config
+    # 3. Set modules.secureBoot.useLanzaboote = true
+    assertions = [
+      {
+        assertion = !cfg.useLanzaboote || config.boot ? lanzaboote;
+        message = ''
+          modules.secureBoot.useLanzaboote is enabled but boot.lanzaboote is not available.
+          Add lanzaboote to your flake inputs:
+            inputs.lanzaboote = {
+              url = "github:nix-community/lanzaboote";
+              inputs.nixpkgs.follows = "nixpkgs";
+            };
+          Then import it in your host configuration.
+        '';
+      }
+    ];
 
     # Ensure the PKI bundle directory exists and contains keys.
     # Keys must be generated manually before enabling Secure Boot:
     #   sudo sbctl create-keys
     #   sudo sbctl enroll-keys --microsoft
-    # Then copy /usr/share/secureboot/keys/{PK,KEK,db}/* to /etc/secureboot/
-    system.activationScripts.secureBootCheck = lib.mkIf cfg.enable ''
+    system.activationScripts.secureBootCheck = ''
       if [ ! -d /etc/secureboot ] || [ ! -f /etc/secureboot/keys/PK/PK.key ]; then
-        echo "WARNING: Secure Boot keys not found in /etc/secureboot/"
-        echo "Generate keys with: sudo sbctl create-keys"
-        echo "Enroll keys with: sudo sbctl enroll-keys --microsoft"
+        echo "INFO: Secure Boot keys not found in /etc/secureboot/"
+        echo "To set up Secure Boot:"
+        echo "  1. sudo sbctl create-keys"
+        echo "  2. sudo mkdir -p /etc/secureboot"
+        echo "  3. sudo cp -r /usr/share/secureboot/keys /etc/secureboot/"
+        echo "  4. sudo sbctl enroll-keys --microsoft"
+        echo "See modules/secure-boot/README.md for details"
       fi
     '';
-
-    environment.systemPackages = with pkgs; [
-      sbctl # Secure Boot key management utility
-    ];
   };
 }
