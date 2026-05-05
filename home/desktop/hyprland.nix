@@ -18,6 +18,8 @@ let
         "gesture_positive = false"
       ]
       [
+        # gesture = 3, horizontal, workspace is bidirectional per official Hyprland 0.54 docs.
+        # Swiping left or right both work — direction follows natural_scroll setting.
         "gesture = 3, horizontal, workspace"
         "# enable_gesture = false  # Removed: obsolete hyprexpo option"
         "# gesture_distance = 300  # Removed: obsolete hyprexpo option"
@@ -334,7 +336,7 @@ let
         bind = $mainMod, F, exec, file-manager
         bind = $mainMod, V, togglefloating,
         bind = $mainMod, J, togglesplit,
-        bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox
+        bind = $mainMod, B, exec, ${pkgs.google-chrome}/bin/google-chrome-stable
         bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
         bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
         bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
@@ -433,9 +435,12 @@ let
     }
 
     gestures {
-        workspace_swipe_distance = 320
+        # workspace_swipe is always-on in 0.54 via the touchpad gesture system.
+        # workspace_swipe_fingers is not a valid option in 0.54 (3-finger is default).
+        workspace_swipe_distance = 150
         workspace_swipe_cancel_ratio = 0.2
-        workspace_swipe_min_speed_to_force = 5
+        workspace_swipe_min_speed_to_force = 8
+        workspace_swipe_invert = false
         workspace_swipe_direction_lock = true
         workspace_swipe_direction_lock_threshold = 10
         workspace_swipe_create_new = false

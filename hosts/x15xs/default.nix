@@ -23,10 +23,9 @@ let
     exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop
   '';
 
-  # Build a wayland-sessions directory containing a Hyprland entry.
-  # programs.hyprland with withUWSM does not register via sessionPackages so
-  # sessionData.desktops only gets the i3 xsession — the wayland-sessions dir
-  # is empty, which crashes tuigreet. Provide the desktop file explicitly.
+  # Build a wayland-sessions directory with an explicit Hyprland entry.
+  # programs.hyprland with withUWSM does not register via sessionPackages,
+  # so we provide the desktop file manually.
   waylandSessions = pkgs.runCommand "wayland-sessions" { } ''
     mkdir -p $out
     cat > $out/hyprland.desktop <<EOF
@@ -38,7 +37,22 @@ let
     EOF
   '';
 
-  xSessions = "${config.services.displayManager.sessionData.desktops}/share/xsessions";
+  # Wrapper that properly launches i3 inside an X server via startx.
+  # tuigreet passes xsession Exec lines to startx, so the Exec itself
+  # must be the WM binary — startx is called by tuigreet automatically.
+  # However startx must exist in PATH (provided by xorg.xinit below).
+  xSessions = pkgs.runCommand "x-sessions" { } ''
+    mkdir -p $out
+    cat > $out/i3.desktop <<EOF
+    [Desktop Entry]
+    Name=i3
+    Comment=Improved tiling window manager
+    Exec=${pkgs.i3}/bin/i3
+    TryExec=${pkgs.i3}/bin/i3
+    Type=XSession
+    DesktopNames=i3
+    EOF
+  '';
 
   greetdCommand = lib.escapeShellArgs [
     "${pkgs.tuigreet}/bin/tuigreet"
@@ -251,6 +265,7 @@ in
     pciutils
     wsdd
     startHyprland
+    xinit  # provides startx, required by tuigreet for xsession launching
   ];
 
   nix.settings = {

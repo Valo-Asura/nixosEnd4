@@ -93,11 +93,6 @@ StyledPopup {
                     value: ResourceService.cpuTemperatureText
                 }
                 StyledPopupValueRow {
-                    icon: "speed"
-                    label: Translation.tr("Load avg:")
-                    value: ResourceService.cpuLoadText
-                }
-                StyledPopupValueRow {
                     icon: "memory"
                     label: Translation.tr("Freq:")
                     value: ResourceService.cpuFrequencyText

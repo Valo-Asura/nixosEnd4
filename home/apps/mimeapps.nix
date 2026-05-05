@@ -16,7 +16,7 @@ let
       ];
     }
     {
-      desktop = "firefox.desktop";
+      desktop = "google-chrome.desktop";
       mimes = [
         "text/html"
         "application/xhtml+xml"

@@ -155,21 +155,29 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Enable libinput so that mouse and touchpad work correctly under X11.
+    services.libinput.enable = true;
+
     services.xserver = {
       enable = true;
       windowManager.i3 = {
         enable = true;
         configFile = ../home/desktop/i3/config;
         extraPackages = with pkgs; [
+          brightnessctl
           dex
           feh
           flameshot
           greenclipPkg
           i3status
+          libnotify
+          pamixer
+          playerctl
           redshift
           rofi
           rofimoji
           xclip
+          xsetroot   # xsetroot -cursor_name left_ptr (cursor fix)
           xss-lock
         ];
         extraSessionCommands = ''
@@ -180,10 +188,17 @@ in
           export QT_STYLE_OVERRIDE=kvantum
           export _JAVA_AWT_WM_NONREPARENTING=1
           export MOZ_ENABLE_WAYLAND=0
+          # Fix cursor immediately before i3 starts
+          xsetroot -cursor_name left_ptr
         '';
       };
     };
 
+    # NixOS windowManager.i3.configFile writes the config to /etc/i3/config.
+    # i3 itself searches: ~/.config/i3/config → ~/.i3/config → /etc/i3/config
+    # If ~/.config/i3/ directory exists but is empty i3 asks to create/use defaults.
+    # Fix: provide a real config at ~/.config/i3/config via Home Manager.
+    # The source is the same file used by the system-wide /etc/i3/config link.
     environment.etc."i3status.conf".source = ../home/desktop/i3/i3status.conf;
     environment.systemPackages = [
       i3ApplyWallpaper

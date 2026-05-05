@@ -1,5 +1,5 @@
 set $mod Mod4
-set $browser firefox
+set $browser google-chrome-stable
 set $editor code --enable-features=UseOzonePlatform --ozone-platform=x11
 set $file_manager file-manager
 set $launcher x15-i3-launcher
@@ -25,13 +25,15 @@ smart_gaps on
 gaps inner 10
 gaps outer 5
 
+# Startup
 exec_always --no-startup-id dex -a -s /etc/xdg/autostart
 exec_always --no-startup-id greenclip daemon
 exec_always --no-startup-id x15-i3-apply-wallpaper
 exec_always --no-startup-id xss-lock --transfer-sleep-lock -- $lock
+# Fix invisible cursor in X11
+exec_always --no-startup-id xsetroot -cursor_name left_ptr
 
-bindsym $mod+space exec $launcher
-bindsym $mod+d exec $launcher
+# ── Apps (mirrors Hyprland: Super+key) ────────────────────────────────────────
 bindsym $mod+q kill
 bindsym $mod+h exit
 bindsym $mod+f exec $file_manager
@@ -41,11 +43,14 @@ bindsym $mod+b exec $browser
 bindsym $mod+t exec $terminal
 bindsym $mod+c exec $editor
 bindsym $mod+e exec $telegram
-bindsym $mod+Tab mode "resize"
-bindsym $mod+Shift+Tab exec $overview
+bindsym $mod+space exec $launcher
+bindsym $mod+d exec $launcher
+
+# Lock (Ctrl+L and Super+L — mirrors Hyprland)
 bindsym Ctrl+l exec $lock
 bindsym $mod+l exec $lock
 
+# ── Utilities ─────────────────────────────────────────────────────────────────
 bindsym $mod+Shift+c exec $clipboard
 bindsym $mod+Shift+e exec $emoji
 bindsym $mod+p exec $wallpaper_menu
@@ -55,6 +60,7 @@ bindsym Print exec $screenshot
 bindsym $mod+Print exec $screenshot
 bindsym $mod+Shift+Print exec $screenshot
 
+# ── Focus & movement (mirrors Hyprland arrow binds) ───────────────────────────
 bindsym $mod+Left focus left
 bindsym $mod+Right focus right
 bindsym $mod+Up focus up
@@ -64,6 +70,7 @@ bindsym $mod+Shift+Right move right
 bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Down move down
 
+# ── Workspaces ────────────────────────────────────────────────────────────────
 bindsym $mod+1 workspace number 1
 bindsym $mod+2 workspace number 2
 bindsym $mod+3 workspace number 3
@@ -84,20 +91,35 @@ bindsym $mod+Shift+7 move container to workspace number 7; workspace number 7
 bindsym $mod+Shift+8 move container to workspace number 8; workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9; workspace number 9
 
+# ── Resize mode (mirrors Hyprland Super+Tab → resize submap) ─────────────────
+bindsym $mod+Tab mode "resize"
+bindsym $mod+Shift+Tab exec $overview
+bindsym $mod+Shift+r mode "resize"
+
 mode "resize" {
-    bindsym Left resize shrink width 40 px or 40 ppt
+    bindsym Left  resize shrink width 40 px or 40 ppt
     bindsym Right resize grow width 40 px or 40 ppt
-    bindsym Up resize shrink height 40 px or 40 ppt
-    bindsym Down resize grow height 40 px or 40 ppt
+    bindsym Up    resize shrink height 40 px or 40 ppt
+    bindsym Down  resize grow height 40 px or 40 ppt
 
     bindsym Escape mode "default"
     bindsym Return mode "default"
+    bindsym Tab    mode "default"
     bindsym $mod+Tab mode "default"
     bindsym $mod+Shift+r mode "default"
 }
 
-bindsym $mod+Shift+r mode "resize"
+# ── Hardware keys ─────────────────────────────────────────────────────────────
+bindsym XF86AudioMute        exec pamixer -t
+bindsym XF86AudioRaiseVolume exec pamixer -i 5
+bindsym XF86AudioLowerVolume exec pamixer -d 5
+bindsym XF86AudioPlay        exec playerctl play-pause
+bindsym XF86AudioNext        exec playerctl next
+bindsym XF86AudioPrev        exec playerctl previous
+bindsym XF86MonBrightnessUp   exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
 
+# ── Bar ───────────────────────────────────────────────────────────────────────
 bar {
     position top
     status_command i3status -c /etc/i3status.conf
@@ -114,6 +136,7 @@ bar {
     }
 }
 
+# ── Window colors ─────────────────────────────────────────────────────────────
 client.focused          #ff4d6d #ff4d6d #120b10 #ff4d6d #ff4d6d
 client.focused_inactive #2a1620 #2a1620 #e3c1c9 #2a1620 #2a1620
 client.unfocused        #191018 #191018 #b89ca4 #191018 #191018

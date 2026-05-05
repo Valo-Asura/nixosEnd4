@@ -109,6 +109,9 @@
   # Restore the upstream Kvantum theme dir now that Home Manager Stylix
   # is no longer managing Qt theming.
   xdg.configFile."Kvantum".enable = lib.mkForce true;
+  # i3 config: ~/.config/i3/ directory exists but is empty, causing i3 to ask
+  # "create new config or use defaults". Provide the file so i3 finds it first.
+  xdg.configFile."i3/config".source = ../../home/desktop/i3/config;
   # The upstream dotfiles layer also ships ~/.config/foot; disable that copy so
   # the local programs.foot block is the only owner of Foot configuration.
   xdg.configFile."foot".enable = lib.mkForce false;

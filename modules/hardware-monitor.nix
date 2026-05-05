@@ -129,8 +129,8 @@ let
             
             # NVIDIA GPU detection
             try:
-                result = subprocess.run(['nvidia-smi', '--query-gpu=temperature.gpu', 
-                                        '--format=csv,noheader'], 
+                result = subprocess.run(['nvidia-smi', '--query-gpu=temperature.gpu',
+                                        '--format=csv,noheader'],
                                        capture_output=True, text=True, timeout=2)
                 if result.returncode == 0:
                     sensors['gpu_temp'] = 'nvidia'
@@ -148,7 +148,7 @@ let
             temps = []
             for zone_path in self.sensors_available['cpu_temp']:
                 try:
-                    temp = int(Path(zone_path) / 'temp') / 1000
+                    temp = int((Path(zone_path) / 'temp').read_text().strip()) / 1000
                     temps.append(temp)
                 except:
                     pass
@@ -169,9 +169,9 @@ let
             """Read NVIDIA GPU temperature"""
             if self.sensors_available['gpu_temp'] == 'nvidia':
                 try:
-                    result = subprocess.run(['nvidia-smi', '--query-gpu=temperature.gpu',
-                                          '--format=csv,noheader'],
-                                         capture_output=True, text=True, timeout=2)
+                    result = subprocess.run(
+                        ['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader'],
+                        capture_output=True, text=True, timeout=2)
                     return int(result.stdout.strip()) if result.returncode == 0 else None
                 except:
                     return None
@@ -855,12 +855,18 @@ in
     systemd.user.services.x15-hwmon = {
       description = "X15 Hardware Monitor Daemon (User)";
       wantedBy = [ "default.target" ];
-      
+
       serviceConfig = {
         Type = "simple";
         ExecStart = "${monitorDaemon}/bin/x15-hwmon-daemon";
         Restart = "on-failure";
         RestartSec = 5;
+      };
+
+      environment = {
+        # Prepend system sw/bin so nvidia-smi is accessible.
+        # mkForce needed because NixOS sets a default PATH for user services.
+        PATH = lib.mkForce "/run/current-system/sw/bin:/run/current-system/sw/sbin";
       };
     };
     

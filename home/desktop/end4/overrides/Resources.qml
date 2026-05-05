@@ -36,33 +36,15 @@ MouseArea {
             warningThreshold: Config.options.bar.resources.swapWarningThreshold
         }
 
-        ColumnLayout {
-            id: cpuColumn
-            Layout.leftMargin: cpuResource.shown ? 6 : 0
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 0
-            visible: cpuResource.shown
-
-            Resource {
-                id: cpuResource
-                iconName: "planner_review"
-                percentage: ResourceUsage.cpuUsage
-                shown: Config.options.bar.resources.alwaysShowCpu
-                    || !(MprisController.activePlayer?.trackTitle?.length > 0)
-                    || root.alwaysShowAllResources
-                warningThreshold: Config.options.bar.resources.cpuWarningThreshold
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                color: ResourceService.cpuTemperature >= 85
-                    ? Appearance.colors.colError
-                    : Appearance.colors.colOnLayer2
-                font.pixelSize: Math.max(10, Appearance.font.pixelSize.small - 1)
-                text: ResourceService.cpuTemperatureText
-                visible: ResourceService.available
-            }
+        Resource {
+            id: cpuResource
+            iconName: "planner_review"
+            percentage: ResourceUsage.cpuUsage
+            shown: Config.options.bar.resources.alwaysShowCpu
+                || !(MprisController.activePlayer?.trackTitle?.length > 0)
+                || root.alwaysShowAllResources
+            Layout.leftMargin: shown ? 6 : 0
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }
     }
 
