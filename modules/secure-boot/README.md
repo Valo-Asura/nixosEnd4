@@ -1,99 +1,53 @@
 # Secure Boot Module
 
-This module provides declarative Secure Boot support using **Lanzaboote**, a Secure Boot-capable bootloader that automatically signs the kernel, initrd, and boot files on each NixOS rebuild.
+This folder now keeps Secure Boot logic split into small modules so the current
+Limine-based host can stay stable while Secure Boot work remains explicit.
 
-## Features
+## Layout
 
-- Automatic kernel and boot file signing on rebuild
-- Integration with `sbctl` for key management
-- Microsoft-compatible key enrollment for dual-boot scenarios
-- Validation checks to ensure keys are present before boot
+- `default.nix`: imports the Secure Boot submodules
+- `options.nix`: shared `modules.secureBoot.*` options
+- `sbctl.nix`: manual-key workflow for the current Limine setup
+- `lanzaboote.nix`: guarded Lanzaboote flow for a future systemd-boot migration
 
-## Prerequisites
+## Modes
 
-1. **UEFI firmware** with Secure Boot support
-2. **Disabled Secure Boot** in BIOS/UEFI (enable after key enrollment)
-3. **systemd-boot** as the current bootloader (Lanzaboote replaces it)
+### `mode = "sbctl"`
 
-## Setup Instructions
+Use this with the current bootloader. It installs `sbctl` and validates that
+key material exists under `modules.secureBoot.pkiBundle`.
 
-### 1. Generate Secure Boot Keys
+Recommended host snippet:
+
+```nix
+modules.secureBoot = {
+  enable = true;
+  mode = "sbctl";
+};
+```
+
+Key setup:
 
 ```bash
 sudo sbctl create-keys
-```
-
-This creates keys in `/usr/share/secureboot/keys/`:
-- `PK` (Platform Key)
-- `KEK` (Key Exchange Key)
-- `db` (Signature Database)
-
-### 2. Copy Keys to System Location
-
-```bash
 sudo mkdir -p /etc/secureboot
 sudo cp -r /usr/share/secureboot/keys /etc/secureboot/
-```
-
-### 3. Enable the Module
-
-In your `hosts/<hostname>/default.nix`:
-
-```nix
-modules.secureBoot.enable = true;
-```
-
-### 4. Rebuild and Enroll Keys
-
-```bash
-sudo nixos-rebuild switch --flake .#<hostname>
 sudo sbctl enroll-keys --microsoft
 ```
 
-The `--microsoft` flag includes Microsoft's keys, allowing Windows and other signed bootloaders to work alongside NixOS.
+### `mode = "lanzaboote"`
 
-### 5. Enable Secure Boot in BIOS
+Use this only after:
 
-Reboot, enter BIOS/UEFI settings, and enable Secure Boot.
+1. adding a `lanzaboote` flake input,
+2. importing `lanzaboote.nixosModules.lanzaboote`,
+3. moving off the current Limine boot path.
 
-## Verification
+The module asserts if Lanzaboote is requested without those prerequisites.
 
-Check Secure Boot status:
+## Why it stays disabled by default
 
-```bash
-sudo sbctl status
-```
-
-Expected output:
-```
-Installed:      ✓ sbctl is installed
-Setup Mode:     ✓ Disabled
-Secure Boot:    ✓ Enabled
-```
-
-## Troubleshooting
-
-### Boot Fails After Enabling Secure Boot
-
-1. Disable Secure Boot in BIOS
-2. Boot into NixOS
-3. Check signing status: `sudo sbctl verify`
-4. Re-sign if needed: `sudo sbctl sign-all`
-5. Re-enable Secure Boot
-
-### Keys Not Found Warning
-
-If you see "Secure Boot keys not found" during activation:
-
-```bash
-sudo sbctl create-keys
-sudo mkdir -p /etc/secureboot
-sudo cp -r /usr/share/secureboot/keys /etc/secureboot/
-sudo nixos-rebuild switch --flake .#<hostname>
-```
-
-## References
-
-- [Lanzaboote Documentation](https://github.com/nix-community/lanzaboote)
-- [sbctl GitHub](https://github.com/Foxboron/sbctl)
-- [NixOS Secure Boot Wiki](https://nixos.wiki/wiki/Secure_Boot)
+This host currently boots with Limine and dual-boots Windows from another NVMe.
+Changing Secure Boot behavior without an intentional bootloader migration would
+be risky, so the module is implemented and validated structurally but not forced
+on automatically.

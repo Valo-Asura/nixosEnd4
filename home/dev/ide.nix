@@ -7,18 +7,23 @@
 
 let
   cfg = config.modules.ide;
-  jupyterPython = pkgs.python3.withPackages (
+  profileBin = "${config.home.profileDirectory}/bin";
+  pythonToolchain = pkgs.python3.withPackages (
     ps: with ps; [
       black
       debugpy
       flake8
+      ipykernel
       isort
+      jupyterlab
       mypy
       pip
-      ipykernel
-      jupyterlab
       pylint
+      pytest
       ruff
+      setuptools
+      virtualenv
+      wheel
     ]
   );
   vscodeExtensions = with pkgs.vscode-extensions; [
@@ -71,9 +76,19 @@ in
       kiro
       antigravity
       windsurf
+      # pythonToolchain is now exposed via home.sessionPath instead of home.packages
+      # to avoid conflicts with other Python environments (e.g., end4/packages.nix)
       # trae: ByteDance AI IDE — no Linux build exists yet (macOS/Windows only).
       # Add here once a Linux release ships.
     ];
+
+    # Make Python toolchain available in PATH without adding to home.packages
+    home.sessionPath = [ "${pythonToolchain}/bin" ];
+
+    home.sessionVariables = {
+      PIP_DISABLE_PIP_VERSION_CHECK = "1";
+      UV_PYTHON = "${profileBin}/python3";
+    };
 
     # Keep VS Code settings mutable because programs.vscode emits this as a
     # home.file entry and the activation hook merges nix-specific settings
@@ -124,9 +139,9 @@ in
     home.activation.configureAllIdeNixSupport = lib.hm.dag.entryAfter [ "installOtherIdeExtensions" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      # v5: add Windsurf (Microsoft marketplace → Pylance)
-      marker="$state_dir/nix-settings-v5"
-      wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v5"
+      # v6: switch IDEs to stable profile paths and expose a full Python toolchain.
+      marker="$state_dir/nix-settings-v6"
+      wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v6"
 
       mkdir -p "$state_dir"
 
@@ -142,9 +157,10 @@ in
         fi
 
         ${pkgs.jq}/bin/jq -e \
-          --arg nil "${pkgs.nil}/bin/nil" \
-          --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
-          --arg python "${jupyterPython}/bin/python3" \
+          --arg nil "${profileBin}/nil" \
+          --arg nixfmt "${profileBin}/nixfmt" \
+          --arg python "${profileBin}/python3" \
+          --arg pytest "${profileBin}/pytest" \
           --arg lang_server "$lang_server" \
           '
             ."nix.enableLanguageServer" == true and
@@ -161,10 +177,15 @@ in
             ."python.languageServer" == $lang_server and
             ."python.analysis.typeCheckingMode" == "basic" and
             ."python.analysis.autoImportCompletions" == true and
+            ."python.analysis.diagnosticMode" == "workspace" and
+            ."python.terminal.activateEnvironment" == true and
             ."python.testing.pytestEnabled" == true and
+            ."python.testing.pytestPath" == $pytest and
             ."python.testing.unittestEnabled" == false and
             ."ruff.nativeServer" == "on" and
             ."jupyter.jupyterServerType" == "local" and
+            ."terminal.integrated.env.linux"."PIP_DISABLE_PIP_VERSION_CHECK" == "1" and
+            ."terminal.integrated.env.linux"."UV_PYTHON" == $python and
             .["[python]"]["editor.defaultFormatter"] == "ms-python.black-formatter" and
             .["[python]"]["editor.formatOnSave"] == true and
             .["[python]"]["editor.codeActionsOnSave"]["source.organizeImports"] == "explicit"
@@ -189,9 +210,10 @@ in
 
         tmp="$(${pkgs.coreutils}/bin/mktemp)"
         ${pkgs.jq}/bin/jq \
-          --arg nil "${pkgs.nil}/bin/nil" \
-          --arg nixfmt "${pkgs.nixfmt}/bin/nixfmt" \
-          --arg python "${jupyterPython}/bin/python3" \
+          --arg nil "${profileBin}/nil" \
+          --arg nixfmt "${profileBin}/nixfmt" \
+          --arg python "${profileBin}/python3" \
+          --arg pytest "${profileBin}/pytest" \
           --arg lang_server "$lang_server" \
           '. + {
             "nix.enableLanguageServer": true,
@@ -212,14 +234,21 @@ in
             "python.languageServer": $lang_server,
             "python.analysis.typeCheckingMode": "basic",
             "python.analysis.autoImportCompletions": true,
+            "python.analysis.diagnosticMode": "workspace",
+            "python.terminal.activateEnvironment": true,
             "python.testing.pytestEnabled": true,
+            "python.testing.pytestPath": $pytest,
             "python.testing.unittestEnabled": false,
             "ruff.nativeServer": "on",
             "jupyter.jupyterServerType": "local",
             "extensions.autoCheckUpdates": false,
             "extensions.autoUpdate": false,
             "workbench.enableExperiments": false,
-            "workbench.tips.enabled": false
+            "workbench.tips.enabled": false,
+            "terminal.integrated.env.linux": {
+              "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+              "UV_PYTHON": $python
+            }
           }
           | .["[nix]"] = ((.["[nix]"] // {}) + {
             "editor.defaultFormatter": "jnoortheen.nix-ide",

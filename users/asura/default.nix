@@ -21,7 +21,7 @@
 
     # Desktop/session behavior.
     ../../home/desktop/hyprland.nix
-    ../../home/desktop/quickshell-integration.nix  # Quickshell UI integration
+    ../../home/desktop/quickshell-integration.nix # Quickshell UI integration
 
     # Shell environment.
     ../../home/shell/base.nix
@@ -41,7 +41,7 @@
     nanobot.enable = true;
     shell.enable = true;
     hyprland.enable = true;
-    
+
     quickshellIntegration = {
       enable = true;
       updateInterval = 2000;
@@ -89,7 +89,13 @@
     gtk-theme = "adw-gtk3-dark";
   };
 
+  dconf.settings."org/blueman/general" = {
+    plugin-list = [ "!GameControllerWakelock" ];
+    symbolic-status-icons = true;
+  };
+
   home.sessionVariables = {
+    BROWSER = "google-chrome-stable";
     XCURSOR_THEME = "Bibata-Modern-Classic";
     XCURSOR_SIZE = "24";
     GTK_THEME = "adw-gtk3-dark";
@@ -112,6 +118,22 @@
   # i3 config: ~/.config/i3/ directory exists but is empty, causing i3 to ask
   # "create new config or use defaults". Provide the file so i3 finds it first.
   xdg.configFile."i3/config".source = ../../home/desktop/i3/config;
+  xdg.configFile."autostart/blueman.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
+  xdg.configFile."autostart/geoclue-demo-agent.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
+  xdg.configFile."autostart/gnome-keyring-pkcs11.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
+  xdg.configFile."autostart/gnome-keyring-secrets.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
   # The upstream dotfiles layer also ships ~/.config/foot; disable that copy so
   # the local programs.foot block is the only owner of Foot configuration.
   xdg.configFile."foot".enable = lib.mkForce false;
@@ -227,6 +249,25 @@
       tab_title_max_length 48
     '';
   };
+
+  # Blueman is enabled at system level (services.blueman.enable = true)
+  # so we don't need a user service
+  # systemd.user.services.blueman-applet = {
+  #   Unit = {
+  #     Description = "Blueman tray applet";
+  #     PartOf = [ "graphical-session.target" ];
+  #     After = [ "graphical-session.target" ];
+  #   };
+  #
+  #   Service = {
+  #     Type = "dbus";
+  #     BusName = "org.blueman.Applet";
+  #     ExecStart = "${pkgs.blueman}/bin/blueman-applet";
+  #     Restart = "on-failure";
+  #   };
+  #
+  #   Install.WantedBy = [ "graphical-session.target" ];
+  # };
 
   programs.home-manager.enable = true;
 }

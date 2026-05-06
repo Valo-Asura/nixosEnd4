@@ -1,12 +1,15 @@
 result
-docs
 result-*
 .direnv
 .envrc
 .DS_Store
 .cache/
+.hypothesis/
 .pytest_cache/
 .venv/
 .vscode/
 __pycache__/
 *.pyc
+
+# Private workflow documentation
+docs/X15_UNIFIED_WORKFLOW.md
