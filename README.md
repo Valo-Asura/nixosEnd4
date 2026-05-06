@@ -31,9 +31,7 @@ nix flake update
 ## Key Features
 
 ### Performance
-- **40% faster boot** (18s → 11s)
-- **25% lower memory usage** (2.8GB → 2.1GB idle)
-- **29% longer battery life** (4.5h → 5.8h)
+- **faster boot** (11s)
 - CachyOS kernel with `-O3` and LTO optimizations
 - Zram compression (2:1 ratio)
 - CPU-specific optimizations (x86-64-v3)

@@ -324,6 +324,14 @@ let
         bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
         bind = $mainMod, D, exec, search-launcher
         bind = $mainMod, Space, exec, search-launcher
+        
+        # Super key release to toggle launcher (QuickShell integration).
+        bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
+        
+        # Interrupt bindings: prevent launcher opening when Super is used as modifier.
+        binditn = , Super_L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = , Super_L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        
         bind = $mainMod, Tab, submap, resize
         bind = $shiftMod, Tab, exec, quickshell-overview
         bind = CTRL, L, exec, quickshell-lock
