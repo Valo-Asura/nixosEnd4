@@ -270,7 +270,11 @@ let
         ws = toString (i + 1);
         key = "code:1${toString i}";
       in
-      "    bind = $mod, ${key}, workspace, ${ws}\n    bind = $shiftMod, ${key}, movetoworkspace, ${ws}"
+      ''
+        bind = $mod, ${key}, workspace, ${ws}
+        bind = $shiftMod, ${key}, movetoworkspace, ${ws}
+        bindn = $mod, ${key}, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, ${key}, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger''
     ) 9
   );
 
@@ -326,12 +330,40 @@ let
         bind = $mainMod, Space, exec, search-launcher
         
         # Super key release to toggle launcher (QuickShell integration).
+        # Only triggers if Super is pressed and released WITHOUT any other key.
         bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
         
-        # Interrupt bindings: prevent launcher opening when Super is used as modifier.
-        # These catch any key press while Super is held, canceling the release trigger.
-        binditn = Super, catchall, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = Super, catchall, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        # Interrupt bindings: cancel launcher trigger when Super is used with other keys.
+        # These must be non-consuming (bindn) to allow the actual keybind to work.
+        bindn = $mainMod, Q, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, H, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, F, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, V, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, J, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, B, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, T, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, C, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, E, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, D, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Space, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, P, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Tab, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Left, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Right, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Up, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Down, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $mainMod, Print, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Tab, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, C, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, E, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, P, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, R, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Left, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Right, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Up, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Down, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = $shiftMod, Print, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
         
         bind = $mainMod, Tab, submap, resize
         bind = $shiftMod, Tab, exec, quickshell-overview
