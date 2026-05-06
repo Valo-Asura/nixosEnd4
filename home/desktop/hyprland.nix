@@ -329,8 +329,9 @@ let
         bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
         
         # Interrupt bindings: prevent launcher opening when Super is used as modifier.
-        binditn = , Super_L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = , Super_L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        # These catch any key press while Super is held, canceling the release trigger.
+        binditn = Super, catchall, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
+        bindn = Super, catchall, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
         
         bind = $mainMod, Tab, submap, resize
         bind = $shiftMod, Tab, exec, quickshell-overview

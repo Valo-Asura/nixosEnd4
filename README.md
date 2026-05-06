@@ -1,9 +1,22 @@
-# X15 XS NixOS Configuration
+<div align="center">
+
+# 🚀 X15 XS NixOS Configuration
+
+[![GitHub Profile](https://img.shields.io/badge/GitHub-Valo--Asura-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Valo-Asura)
+[![NixOS](https://img.shields.io/badge/NixOS-26.05-5277C3?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
+[![Hyprland](https://img.shields.io/badge/Hyprland-0.54-00D9FF?style=for-the-badge&logo=wayland&logoColor=white)](https://hyprland.org)
 
 [![CI](https://github.com/Valo-Asura/nixosEnd4/actions/workflows/ci.yml/badge.svg)](https://github.com/Valo-Asura/nixosEnd4/actions/workflows/ci.yml)
 [![Markdown](https://github.com/Valo-Asura/nixosEnd4/actions/workflows/markdown.yml/badge.svg)](https://github.com/Valo-Asura/nixosEnd4/actions/workflows/markdown.yml)
 
-High-performance NixOS configuration for Colorful X15 XS gaming laptop with hybrid NVIDIA/Intel graphics, dual desktop environments (Hyprland + i3), and advanced system optimization.
+**High-performance NixOS configuration for Colorful X15 XS gaming laptop**  
+*Hybrid NVIDIA/Intel graphics • Dual desktop environments (Hyprland + i3) • Advanced system optimization*
+
+[Quick Start](#quick-start) • [Features](#key-features) • [Documentation](#documentation) • [Credits](#credits)
+
+---
+
+</div>
 
 ## Quick Start
 
@@ -289,12 +302,23 @@ sudo rm /var/cache/tuigreet/lastsession-*
 
 ## Credits
 
-- [end-4](https://github.com/end-4) - Illogical Impulse shell and UX design
-- [soymou](https://github.com/soymou/illogical-flake) - illogical-flake wrapper
-- [Hyprland](https://github.com/hyprwm/Hyprland) - Wayland compositor
-- [QuickShell](https://git.outfoxxed.me/quickshell/quickshell) - Shell framework
-- [CachyOS](https://github.com/CachyOS) - Optimized kernel
-- [NixOS](https://nixos.org) - Declarative Linux distribution
+### Desktop Environment & Shell
+- **[end-4/illogical-impulse](https://github.com/end-4/illogical-impulse)** - Beautiful, feature-rich shell and UX design
+- **[soymou/illogical-flake](https://github.com/soymou/illogical-flake)** - Nix flake wrapper for End-4's dotfiles
+- **[QuickShell](https://git.outfoxxed.me/quickshell/quickshell)** - Qt-based shell framework powering End-4
+  - [QuickShell Documentation](https://quickshell.outfoxxed.me/)
+  - [QuickShell GitHub Mirror](https://github.com/outfoxxed/quickshell)
+
+### Core Technologies
+- **[Hyprland](https://github.com/hyprwm/Hyprland)** - Dynamic tiling Wayland compositor
+- **[CachyOS](https://github.com/CachyOS)** - Optimized Linux kernel with performance patches
+- **[NixOS](https://nixos.org)** - Declarative, reproducible Linux distribution
+- **[Home Manager](https://github.com/nix-community/home-manager)** - User environment management
+
+### Additional Tools
+- **[Zen Browser](https://github.com/zen-browser/desktop)** - Privacy-focused Firefox fork
+- **[matugen](https://github.com/InioX/matugen)** - Material Design color scheme generator
+- **[Stylix](https://github.com/danth/stylix)** - System-wide theming framework
 
 ## License
 
@@ -302,6 +326,12 @@ This configuration is provided as-is for personal use and reference.
 
 ---
 
-**Last Updated**: May 2026  
-**NixOS Version**: 26.05 (unstable)  
-**Kernel**: Linux 7.0.1
+<div align="center">
+
+**Built with ❤️ by [Valo-Asura](https://github.com/Valo-Asura)**
+
+**Last Updated**: May 2026 • **NixOS Version**: 26.05 (unstable) • **Kernel**: Linux 7.0.1
+
+*Powered by [End-4 Illogical Impulse](https://github.com/end-4/illogical-impulse) & [QuickShell](https://git.outfoxxed.me/quickshell/quickshell)*
+
+</div>
