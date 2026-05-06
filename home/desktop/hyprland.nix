@@ -13,6 +13,7 @@ let
     builtins.replaceStrings
       [
         "gesture = 3, swipe, move,"
+        "gesture = 4, horizontal, workspace"
         "enable_gesture = false"
         "gesture_distance = 300"
         "gesture_positive = false"
@@ -21,6 +22,7 @@ let
         # gesture = 3, horizontal, workspace is bidirectional per official Hyprland 0.54 docs.
         # Swiping left or right both work — direction follows natural_scroll setting.
         "gesture = 3, horizontal, workspace"
+        "# gesture = 4, horizontal, workspace  # Keep 3-finger swipes deterministic"
         "# enable_gesture = false  # Removed: obsolete hyprexpo option"
         "# gesture_distance = 300  # Removed: obsolete hyprexpo option"
         "# gesture_positive = false  # Removed: obsolete hyprexpo option"
@@ -127,7 +129,7 @@ let
     set -euo pipefail
 
     if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.hyprland}/bin/hyprctl dispatch global quickshell:searchToggle
+      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call search toggle
     fi
 
     if ${pkgs.procps}/bin/pgrep -x fuzzel >/dev/null 2>&1; then
@@ -137,6 +139,46 @@ let
     exec ${pkgs.fuzzel}/bin/fuzzel
   '';
 
+  quickshellOverview = pkgs.writeShellScriptBin "quickshell-overview" ''
+    set -euo pipefail
+
+    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call search workspacesToggle
+    fi
+
+    exec ${searchLauncher}/bin/search-launcher
+  '';
+
+  quickshellLock = pkgs.writeShellScriptBin "quickshell-lock" ''
+    set -euo pipefail
+
+    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call lock activate
+    fi
+
+    exec ${pkgs.systemd}/bin/loginctl lock-session
+  '';
+
+  quickshellLockFocus = pkgs.writeShellScriptBin "quickshell-lock-focus" ''
+    set -euo pipefail
+
+    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call lock focus
+    fi
+
+    exec ${quickshellLock}/bin/quickshell-lock
+  '';
+
+  quickshellWallpaperSelector = pkgs.writeShellScriptBin "quickshell-wallpaper-selector" ''
+    set -euo pipefail
+
+    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call wallpaperSelector toggle
+    fi
+
+    exec ${wallpaperRandom}/bin/wallpaper-random
+  '';
+
   fileManager = pkgs.writeShellScriptBin "file-manager" ''
     set -euo pipefail
 
@@ -144,7 +186,7 @@ let
 
     # Keep the file manager on the GTK3 theme contract in Hyprland sessions.
     export GTK_THEME="adw-gtk3-dark"
-    exec ${pkgs.nemo}/bin/nemo "$target"
+    exec ${pkgs.nemo}/bin/nemo --new-window "$target"
   '';
 
   wallpaperSwitch = pkgs.writeShellScriptBin "wallpaper-switch" ''
@@ -221,16 +263,6 @@ let
     exec "$switchwall" --image "$selected" --mode dark
   '';
 
-  workspaceKeycodes = builtins.genList (i: "code:1${toString i}") 9;
-
-  mkInterruptBindLine =
-    mod: key: "    bindn = ${mod}, ${key}, global, quickshell:searchToggleReleaseInterrupt";
-
-  workspaceInterruptBinds = lib.concatStringsSep "\n" (
-    (builtins.map (key: mkInterruptBindLine "$mod" key) workspaceKeycodes)
-    ++ (builtins.map (key: mkInterruptBindLine "$shiftMod" key) workspaceKeycodes)
-  );
-
   workspaceDispatchBinds = lib.concatStringsSep "\n" (
     builtins.genList (
       i:
@@ -243,13 +275,13 @@ let
   );
 
   hyprIdleConf = ''
-    $lock_cmd = bash -lc 'hyprctl dispatch global quickshell:lock || qs -p "$HOME/.config/quickshell/ii" ipc call lock activate'
+    $lock_cmd = ${quickshellLock}/bin/quickshell-lock
     $suspend_cmd = systemctl suspend || loginctl suspend
 
     general {
         lock_cmd = $lock_cmd
         before_sleep_cmd = $lock_cmd
-        after_sleep_cmd = hyprctl dispatch global quickshell:lockFocus
+        after_sleep_cmd = ${quickshellLockFocus}/bin/quickshell-lock-focus
         inhibit_sleep = 3
     }
 
@@ -280,56 +312,6 @@ let
         $altMod = SUPER ALT
         $mod = SUPER
 
-        # End-4 launcher on Super release. If Super is used as a chord modifier
-        # (e.g. Super+Q), interrupt so release does not also open launcher.
-        bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
-        bindid = Super, Super_R, Toggle launcher, global, quickshell:searchToggleRelease
-        binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt
-        bind = Ctrl, Super_L, global, quickshell:searchToggleReleaseInterrupt
-        bind = Ctrl, Super_R, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:273, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:274, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:275, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:276, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:277, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse_up, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse_down, global, quickshell:searchToggleReleaseInterrupt
-
-        bindn = $mainMod, Q, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, H, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, F, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, V, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, J, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, B, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, T, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, C, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, E, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Tab, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, L, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, P, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, F2, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Left, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Right, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Up, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Down, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $mainMod, Print, global, quickshell:searchToggleReleaseInterrupt
-
-        bindn = $shiftMod, C, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, E, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, P, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Tab, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Left, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Right, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Up, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Down, global, quickshell:searchToggleReleaseInterrupt
-        bindn = $shiftMod, Print, global, quickshell:searchToggleReleaseInterrupt
-
-        bindn = $altMod, P, global, quickshell:searchToggleReleaseInterrupt
-
-    ${workspaceInterruptBinds}
-
         # Apps and shell entry points.
         bind = $mainMod, Q, killactive,
         bind = $mainMod, H, exit,
@@ -340,15 +322,17 @@ let
         bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
         bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
         bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
+        bind = $mainMod, D, exec, search-launcher
+        bind = $mainMod, Space, exec, search-launcher
         bind = $mainMod, Tab, submap, resize
-        bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle
-        bind = CTRL, L, global, quickshell:lock
-        bind = $mainMod, L, global, quickshell:lock
+        bind = $shiftMod, Tab, exec, quickshell-overview
+        bind = CTRL, L, exec, quickshell-lock
+        bind = $mainMod, L, exec, quickshell-lock
 
         # Utilities.
         bind = $shiftMod, C, exec, clipboard
         bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
-        bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle
+        bind = $mainMod, P, exec, quickshell-wallpaper-selector
         bind = $shiftMod, P, exec, wallpaper-random
         bind = $mod, F2, exec, night-shift
 
@@ -398,7 +382,7 @@ let
         bindl = , XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause
         bindl = , XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next
         bindl = , XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous
-        bindl = , switch:Lid Switch, global, quickshell:lock
+        bindl = , switch:Lid Switch, exec, quickshell-lock
 
         bindle = , XF86AudioRaiseVolume, exec, sound-up
         bindle = , XF86AudioLowerVolume, exec, sound-down
@@ -435,15 +419,17 @@ let
     }
 
     gestures {
-        # workspace_swipe is always-on in 0.54 via the touchpad gesture system.
-        # workspace_swipe_fingers is not a valid option in 0.54 (3-finger is default).
-        workspace_swipe_distance = 150
-        workspace_swipe_cancel_ratio = 0.2
-        workspace_swipe_min_speed_to_force = 8
+        # Match the previous fast 3-finger workspace feel while keeping the
+        # swipe deterministic on this hybrid-graphics laptop.
+        workspace_swipe_distance = 110
+        workspace_swipe_cancel_ratio = 0.12
+        workspace_swipe_min_speed_to_force = 4
         workspace_swipe_invert = false
         workspace_swipe_direction_lock = true
-        workspace_swipe_direction_lock_threshold = 10
-        workspace_swipe_create_new = false
+        workspace_swipe_direction_lock_threshold = 6
+        workspace_swipe_create_new = true
+        workspace_swipe_forever = false
+        workspace_swipe_use_r = false
     }
 
     misc {
@@ -480,9 +466,13 @@ let
     }
 
     input {
+        follow_mouse = 1
+
         touchpad {
             clickfinger_behavior = false
+            disable_while_typing = true
             natural_scroll = true
+            scroll_factor = 0.9
             tap-to-click = true
             tap_button_map = lrm
         }
@@ -516,6 +506,10 @@ in
       nightShift
       clipboardPicker
       searchLauncher
+      quickshellOverview
+      quickshellLock
+      quickshellLockFocus
+      quickshellWallpaperSelector
       fileManager
       wallpaperSwitch
       wallpaperRandom

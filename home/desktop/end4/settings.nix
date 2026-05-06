@@ -205,31 +205,39 @@ in
         ''
                     set -euo pipefail
 
-                    copy_mutable_dir() {
+                    sync_mutable_dir() {
                       src="$1"
                       dest="$2"
 
                       mkdir -p "$(dirname "$dest")"
-                      rm -rf "$dest"
-                      cp -r "$src" "$dest"
+                      if [ -L "$dest" ]; then
+                        rm -f "$dest"
+                      fi
+                      mkdir -p "$dest"
+                      ${pkgs.rsync}/bin/rsync -a --delete "$src"/ "$dest"/
                       chmod -R u+w "$dest"
                     }
 
-                    copy_mutable_file() {
+                    sync_mutable_file() {
                       src="$1"
                       dest="$2"
 
                       mkdir -p "$(dirname "$dest")"
-                      rm -f "$dest"
-                      cp "$src" "$dest"
-                      chmod u+w "$dest"
+                      if [ -L "$dest" ]; then
+                        rm -f "$dest"
+                      fi
+
+                      if [ ! -f "$dest" ] || ! ${pkgs.diffutils}/bin/cmp -s "$src" "$dest"; then
+                        cp "$src" "$dest"
+                        chmod u+w "$dest"
+                      fi
                     }
 
-                    copy_mutable_dir "${dotfilesSource}/dots/.config/fuzzel" "$HOME/.config/fuzzel"
-                    copy_mutable_dir "${dotfilesSource}/dots/.config/hypr/custom/scripts" "$HOME/.config/hypr/custom/scripts"
-          copy_mutable_dir "${dotfilesSource}/dots/.config/matugen" "$HOME/.config/matugen"
-          copy_mutable_file "${dotfilesSource}/dots/.config/hypr/hyprland/colors.conf" "$HOME/.config/hypr/hyprland/colors.conf"
-          copy_mutable_file "${gtk4CssSeed}" "$HOME/.config/gtk-4.0/gtk.css"
+                    sync_mutable_dir "${dotfilesSource}/dots/.config/fuzzel" "$HOME/.config/fuzzel"
+                    sync_mutable_dir "${dotfilesSource}/dots/.config/hypr/custom/scripts" "$HOME/.config/hypr/custom/scripts"
+          sync_mutable_dir "${dotfilesSource}/dots/.config/matugen" "$HOME/.config/matugen"
+          sync_mutable_file "${dotfilesSource}/dots/.config/hypr/hyprland/colors.conf" "$HOME/.config/hypr/hyprland/colors.conf"
+          sync_mutable_file "${gtk4CssSeed}" "$HOME/.config/gtk-4.0/gtk.css"
           ln -sfn "$HOME/.local/state/quickshell/user/generated/colors.json" "$HOME/.config/matugen/colors.json"
         '';
 

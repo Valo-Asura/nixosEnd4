@@ -63,6 +63,10 @@ def test_nix_files_are_readable():
         "home/desktop/end4/overrides/ChargeLimit.qml",
         "home/desktop/end4/overrides/Todo.qml",
         "home/desktop/end4/overrides/UtilButtons.qml",
+        "modules/secure-boot/default.nix",
+        "modules/secure-boot/options.nix",
+        "modules/secure-boot/sbctl.nix",
+        "modules/secure-boot/lanzaboote.nix",
     ]:
         assert read_file(rel)
 
@@ -140,6 +144,11 @@ def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
         "home.activation.migrateFootDirectory",
         'foot_dir="$HOME/.config/foot"',
         "mimeapps.enable = true;",
+        'BROWSER = "google-chrome-stable";',
+        '"org/blueman/general"',
+        '"autostart/blueman.desktop".text',
+        '"autostart/gnome-keyring-secrets.desktop".text',
+        "systemd.user.services.blueman-applet",
         'shell = "${pkgs.zsh}/bin/zsh";',
     ]:
         assert contains_literal(home, literal), f"Missing home literal: {literal}"
@@ -193,14 +202,19 @@ def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
         "ms-azuretools.vscode-docker",
         "black",
         "debugpy",
+        "pytest",
         "ruff",
-        'wanted="nil=${pkgs.nil}/bin/nil;nixfmt=${pkgs.nixfmt}/bin/nixfmt;python=${jupyterPython}/bin/python3;theme=GitHub Dark Dimmed;pythonStack=v5"',
+        "pythonToolchain",
+        'wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v6"',
         '"workbench.colorTheme" == "GitHub Dark Dimmed"',
         '"window.commandCenter" == false',
         '"telemetry.telemetryLevel" == "off"',
         '"update.mode" == "none"',
         '"python.languageServer" == $lang_server',
         '"python.analysis.typeCheckingMode" == "basic"',
+        '"python.analysis.diagnosticMode" == "workspace"',
+        '"python.testing.pytestPath" == $pytest',
+        '"terminal.integrated.env.linux"."UV_PYTHON" == $python',
         '"ruff.nativeServer" == "on"',
         '"editor.defaultFormatter": "ms-python.black-formatter"',
         'merge_settings "Code"',
@@ -217,7 +231,7 @@ def test_mimeapps_module_keeps_mimeapps_writable_and_seeds_defaults():
     for literal in [
         'enable = lib.mkEnableOption "writable MIME defaults and file-manager helpers";',
         "seededMimeDefaults = [",
-        "firefox.desktop",
+        "google-chrome.desktop",
         "gnome-text-editor",
         "loupe",
         "papers",
@@ -267,6 +281,10 @@ def test_local_settings_module_keeps_config_mutable_and_bootstraps_dark_mode():
         "prepareIllogicalImpulseMutableThemeOutputs",
         "mergeIllogicalImpulseSettings",
         "bootstrapQuickshellUserState",
+        "sync_mutable_dir()",
+        "sync_mutable_file()",
+        "${pkgs.rsync}/bin/rsync -a --delete",
+        '${pkgs.diffutils}/bin/cmp -s "$src" "$dest"',
         'target="$HOME/.config/illogical-impulse/config.json"',
         'switchwall.sh" --mode dark --noswitch',
         "matugen --source-color-index 0 --prefer closest-to-fallback \"''${matugen_args[@]}\"",
@@ -399,11 +417,18 @@ def test_hyprland_uses_classic_layout_and_perf_friendly_rules():
         "smart_resizing = false",
         "precise_mouse_move = true",
         "drag_threshold = 10",
+        "follow_mouse = 1",
         "clickfinger_behavior = false",
+        "disable_while_typing = true",
+        "scroll_factor = 0.9",
         "tap_button_map = lrm",
         "gestures {",
-        "workspace_swipe_distance = 320",
+        "workspace_swipe_distance = 110",
+        "workspace_swipe_cancel_ratio = 0.12",
+        "workspace_swipe_min_speed_to_force = 4",
         "workspace_swipe_create_new = false",
+        "workspace_swipe_forever = false",
+        "workspace_swipe_use_r = false",
         "no_focus_fallback = true",
         "dim_inactive = false",
         "passes = 1",
@@ -430,20 +455,16 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "submap = global",
         'searchLauncher = pkgs.writeShellScriptBin "search-launcher"',
         'qs -p "$HOME/.config/quickshell/ii" ipc show',
-        "hyprctl dispatch global quickshell:searchToggle",
+        'ipc call search toggle',
+        'pkgs.writeShellScriptBin "quickshell-overview"',
+        'pkgs.writeShellScriptBin "quickshell-lock"',
+        'pkgs.writeShellScriptBin "quickshell-lock-focus"',
+        'pkgs.writeShellScriptBin "quickshell-wallpaper-selector"',
         "${pkgs.fuzzel}/bin/fuzzel",
-        "bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease",
-        "bindid = Super, Super_R, Toggle launcher, global, quickshell:searchToggleRelease",
-        "binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt",
-        "bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt",
-        "bindn = $mainMod, Q, global, quickshell:searchToggleReleaseInterrupt",
-        "bindn = $mainMod, Tab, global, quickshell:searchToggleReleaseInterrupt",
-        "bindn = $shiftMod, R, global, quickshell:searchToggleReleaseInterrupt",
-        'workspaceKeycodes = builtins.genList (i: "code:1${toString i}") 9;',
-        "workspaceInterruptBinds = lib.concatStringsSep",
         "workspaceDispatchBinds = lib.concatStringsSep",
         "hyprIdleConf = ''",
-        'hyprctl dispatch global quickshell:lock || qs -p "$HOME/.config/quickshell/ii" ipc call lock activate',
+        '$lock_cmd = ${quickshellLock}/bin/quickshell-lock',
+        '${quickshellLockFocus}/bin/quickshell-lock-focus',
         'pkgs.writeShellScriptBin "clipboard"',
         'pkgs.writeShellScriptBin "wallpaper-switch"',
         'pkgs.writeShellScriptBin "wallpaper-random"',
@@ -454,15 +475,17 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bind = $mainMod, F, exec, file-manager",
         "bind = $mainMod, V, togglefloating,",
         "bind = $mainMod, J, togglesplit,",
-        "bind = $mainMod, B, exec, ${pkgs.firefox}/bin/firefox",
+        "bind = $mainMod, B, exec, ${pkgs.google-chrome}/bin/google-chrome-stable",
         "bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty",
         "bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland",
         "bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop",
-        "bind = $shiftMod, Tab, global, quickshell:overviewWorkspacesToggle",
-        "bind = CTRL, L, global, quickshell:lock",
-        "bind = $mainMod, L, global, quickshell:lock",
+        "bind = $mainMod, D, exec, search-launcher",
+        "bind = $mainMod, Space, exec, search-launcher",
+        "bind = $shiftMod, Tab, exec, quickshell-overview",
+        "bind = CTRL, L, exec, quickshell-lock",
+        "bind = $mainMod, L, exec, quickshell-lock",
         "bind = $shiftMod, C, exec, clipboard",
-        "bind = $mainMod, P, global, quickshell:wallpaperSelectorToggle",
+        "bind = $mainMod, P, exec, quickshell-wallpaper-selector",
         "bind = $shiftMod, P, exec, wallpaper-random",
         "bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji",
         "bind = $mod, F2, exec, night-shift",
@@ -492,14 +515,14 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bind = , Return, submap, global",
         "bind = , Tab, submap, global",
         "bind = $shiftMod, R, submap, global",
-        "bindl = , switch:Lid Switch, global, quickshell:lock",
+        "bindl = , switch:Lid Switch, exec, quickshell-lock",
         "Intentionally empty.",
     ]:
         assert contains_literal(hyprland, literal), f"Missing keybind literal: {literal}"
     assert not_contains_literal(hyprland, "bind = Super, Super_L, exec, search-launcher")
     assert not_contains_literal(hyprland, "bind = Super, Super_R, exec, search-launcher")
     assert not_contains_literal(hyprland, "bindn = $mainMod, W, global, quickshell:searchToggleReleaseInterrupt")
-    assert not_contains_literal(hyprland, "bind = $mainMod, Space, exec, search-launcher")
+    assert not_contains_literal(hyprland, "bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease")
     assert not_contains_literal(hyprland, "bind = SUPER, Tab, global, quickshell:overviewWorkspacesToggle")
     assert not_contains_literal(hyprland, "bindmt = SUPER SHIFT, mouse:272, movewindow")
 
@@ -670,18 +693,26 @@ def test_packages_module_drops_duplicate_gui_file_managers():
 
 def test_quickshell_resource_integration_uses_hwmon_json():
     quickshell_module = read_file("home/desktop/quickshell-integration.nix")
+    end4_settings = read_file("home/desktop/end4/settings.nix")
     resource_service = read_file("home/desktop/end4/overrides/ResourceService.qml")
     resources_bar = read_file("home/desktop/end4/overrides/Resources.qml")
     resources_popup = read_file("home/desktop/end4/overrides/ResourcesPopup.qml")
 
     for literal in [
-        "pkgs.replaceVars ./end4/overrides/ResourceService.qml",
-        "pkgs.replaceVars ./end4/overrides/ResourcesPopup.qml",
-        '".config/quickshell/ii/modules/ii/bar/Resources.qml".source',
-        '".config/quickshell/ii/modules/ii/bar/ResourcesPopup.qml".source',
-        '".config/quickshell/ii/services/ResourceService.qml".source',
+        'cp ${./overrides/Resources.qml} "$out/ii/modules/ii/bar/Resources.qml"',
+        'cp ${./overrides/ResourcesPopup.qml} "$out/ii/modules/ii/bar/ResourcesPopup.qml"',
+        'cp ${./overrides/ResourceService.qml} "$out/ii/services/ResourceService.qml"',
+        's|@staleAfterMs@|${toString (config.modules.quickshellIntegration.updateInterval * 3)}|g',
+        's|interval: 200|interval: 1000|',
     ]:
-        assert contains_literal(quickshell_module, literal), f"Missing quickshell module literal: {literal}"
+        assert contains_literal(end4_settings, literal), f"Missing quickshell patch literal: {literal}"
+
+    for literal in [
+        'enable = lib.mkEnableOption "Quickshell resource monitoring integration";',
+        "updateInterval = lib.mkOption {",
+        'description = "Resource data staleness window in milliseconds";',
+    ]:
+        assert contains_literal(quickshell_module, literal), f"Missing quickshell option literal: {literal}"
 
     for literal in [
         "pragma Singleton",
@@ -693,12 +724,13 @@ def test_quickshell_resource_integration_uses_hwmon_json():
         "cpuTemperatureText",
         "cpuLoadText",
         "cpuFrequencyText",
+        "Keep the last good snapshot",
     ]:
         assert contains_literal(resource_service, literal), f"Missing resource service literal: {literal}"
 
-    assert contains_literal(resources_bar, "ResourceService.cpuTemperatureText")
+    assert contains_literal(resources_bar, "ResourcesPopup {")
     assert contains_literal(resources_popup, 'label: Translation.tr("Temp:")')
-    assert contains_literal(resources_popup, 'label: Translation.tr("Load avg:")')
+    assert contains_literal(resources_popup, 'label: Translation.tr("Usage:")')
     assert contains_literal(resources_popup, 'label: Translation.tr("Freq:")')
 
 
@@ -711,7 +743,7 @@ def test_greetd_hyprland_and_i3_sessions_are_wired_together():
         "i3Session.enable = true;",
         "--sessions",
         "--xsessions",
-        "--remember-session",
+        "--remember",
         "--remember-user-session",
         "--greeting",
         'exec ${pkgs.uwsm}/bin/uwsm start -e -D Hyprland hyprland.desktop',
@@ -734,6 +766,7 @@ def test_greetd_hyprland_and_i3_sessions_are_wired_together():
     for literal in [
         "set $mod Mod4",
         "exec_always --no-startup-id greenclip daemon",
+        "bindsym $mod+Return exec $terminal",
         "bindsym $mod+space exec $launcher",
         "bindsym $mod+Shift+Tab exec $overview",
         "bindsym Ctrl+l exec $lock",

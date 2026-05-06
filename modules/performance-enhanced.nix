@@ -54,9 +54,8 @@ let
   cpufreqOptimizerParams = {
     # HWP dynamic boost for Alder Lake
     "intel_pstate.hwp_dynamic_boost" = if isMax then "1" else "0";
-    
-    # P/E core migration cost (hybrid CPU optimization)
-    "sched_migration_cost_ns" = "500000";
+
+    # P/E core migration fan-out (hybrid CPU optimization)
     "sched_nr_migrate" = if isMax then "128" else "32";
     
     # Idle injection control for thermal management
@@ -433,6 +432,8 @@ in
         
         # Disk I/O scheduler
         DISK_IOSCHED = "kyber";
+        DISK_IDLE_SECS_ON_AC = "";
+        DISK_IDLE_SECS_ON_BAT = "";
         
         # USB autosuspend
         USB_AUTOSUSPEND = if isMax then 0 else 1;

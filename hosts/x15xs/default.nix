@@ -47,7 +47,7 @@ let
     [Desktop Entry]
     Name=i3
     Comment=Improved tiling window manager
-    Exec=${pkgs.i3}/bin/i3
+    Exec=${pkgs.i3}/bin/i3 -c /etc/i3/config
     TryExec=${pkgs.i3}/bin/i3
     Type=XSession
     DesktopNames=i3

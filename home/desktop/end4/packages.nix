@@ -50,26 +50,18 @@ in
         lxqt.pavucontrol-qt
         wireplumber
         libdbusmenu-gtk3
-        playerctl
-        brightnessctl
         ddcutil
         axel
         bc
-        cliphist
-        curl
         rsync
         wget
         libqalculate
-        ripgrep
-        jq
 
-        foot
         fuzzel
         matugen
         mpv
         mpvpaper
         swappy
-        wf-recorder
         hyprshot
         wlogout
 
@@ -87,13 +79,10 @@ in
         ffmpeg
         songrec
         pulseaudio
-        libnotify
-        grim
 
         hypridle
         hyprsunset
         wayland-protocols
-        wl-clipboard
 
         libsoup_3
         libportal-gtk4
@@ -111,7 +100,6 @@ in
         pythonEnv
         eza
 
-        gnome-keyring
         kdePackages.polkit-kde-agent-1
         kdePackages.kdialog
         kdePackages.kirigami

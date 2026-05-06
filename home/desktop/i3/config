@@ -41,6 +41,7 @@ bindsym $mod+v floating toggle
 bindsym $mod+j layout toggle split
 bindsym $mod+b exec $browser
 bindsym $mod+t exec $terminal
+bindsym $mod+Return exec $terminal
 bindsym $mod+c exec $editor
 bindsym $mod+e exec $telegram
 bindsym $mod+space exec $launcher

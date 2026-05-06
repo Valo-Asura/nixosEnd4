@@ -49,7 +49,6 @@ in
       cliphist
       libnotify
       pavucontrol
-      blueman
       telegram-desktop
       wtype
       nemo

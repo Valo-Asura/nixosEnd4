@@ -155,7 +155,7 @@ in
         "kernel.sched_autogroup_enabled" = 1;
         # Increase migration cost threshold — reduces cross-core cache thrashing
         # on the P-core / E-core hybrid topology of the i5-12500H.
-        "kernel.sched_migration_cost_ns" = 500000;
+        # Linux 7 removed this procfs knob, so keep the tuning portable.
 
         # ── Networking ────────────────────────────────────────────────────────
         # BBR v1 congestion control: lower bufferbloat on WiFi 6 / fast links.
@@ -220,6 +220,9 @@ in
 
           # Kyber I/O scheduler: latency-aware, low-overhead for NVMe SSDs.
           DISK_IOSCHED = "kyber";
+          # Avoid TLP writing the deprecated vm.laptop_mode knob on newer kernels.
+          DISK_IDLE_SECS_ON_AC = "";
+          DISK_IDLE_SECS_ON_BAT = "";
 
           # USB autosuspend on battery; keep awake on AC for peripherals.
           USB_AUTOSUSPEND = 0;

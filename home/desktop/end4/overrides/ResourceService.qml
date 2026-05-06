@@ -51,7 +51,7 @@ Singleton {
     function refresh() {
         const raw = dataFile.text()
         if (!raw || !raw.trim()) {
-            reset()
+            updateAvailability()
             return
         }
 
@@ -74,8 +74,9 @@ Singleton {
             lastUpdatedMs = Number.isFinite(timestamp) ? timestamp : Date.now()
             updateAvailability()
         } catch (error) {
-            console.log("ResourceService: failed to parse " + root.dataPath + ": " + error)
-            reset()
+            // The hwmon writer can briefly expose an incomplete JSON payload mid-write.
+            // Keep the last good snapshot and let the staleness timer expire it naturally.
+            updateAvailability()
         }
     }
 
@@ -89,7 +90,7 @@ Singleton {
         onLoaded: root.refresh()
         onTextChanged: root.refresh()
         onFileChanged: reload()
-        onLoadFailed: root.reset()
+        onLoadFailed: root.updateAvailability()
     }
 
     Timer {
