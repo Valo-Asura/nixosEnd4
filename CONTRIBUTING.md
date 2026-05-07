@@ -26,5 +26,5 @@ nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --no-link
 
 - [ ] CI passes (`ci` and `markdown` workflows)
 - [ ] Structural tests updated when needed
-- [ ] Docs updated (`README.md`, `END4_SETTINGS.md`, `HYPRLAND_CONTROLS.md`) if user-visible behavior changed
+- [ ] Docs updated (`README.md`, `END4_SETTINGS.md`, `docs/X15_UNIFIED_WORKFLOW.md`) if user-visible behavior changed
 - [ ] No runtime `git clone` patterns added

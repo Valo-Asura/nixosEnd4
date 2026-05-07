@@ -48,15 +48,10 @@ in
       wl-clipboard
       cliphist
       libnotify
-      pavucontrol
       telegram-desktop
       wtype
       nemo
       yazi
-
-      # Media.
-      ani-cli
-      vlc
 
       # Terminals and theming.
       foot

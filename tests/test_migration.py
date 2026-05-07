@@ -51,6 +51,7 @@ def test_nix_files_are_readable():
         "modules/portal.nix",
         "users/asura/default.nix",
         "home/apps/browser.nix",
+        "home/apps/media.nix",
         "home/apps/mimeapps.nix",
         "home/apps/yazi.nix",
         "home/core/packages.nix",
@@ -58,11 +59,13 @@ def test_nix_files_are_readable():
         "home/dev/ide.nix",
         "home/dev/nanobot.nix",
         "home/desktop/hyprland.nix",
+        "home/desktop/quickshell/default.nix",
         "home/desktop/end4/module.nix",
         "home/desktop/end4/settings.nix",
         "home/desktop/end4/overrides/ChargeLimit.qml",
         "home/desktop/end4/overrides/Todo.qml",
         "home/desktop/end4/overrides/UtilButtons.qml",
+        "home/shell/terminal.nix",
         "modules/secure-boot/default.nix",
         "modules/secure-boot/options.nix",
         "modules/secure-boot/sbctl.nix",
@@ -95,6 +98,7 @@ def test_flake_pins_the_target_stack():
     for literal in [
         'github:hyprwm/Hyprland/v0.54.0',
         'github:soymou/illogical-flake',
+        'github:ilyamiro/nixos-configuration',
         'git+https://git.outfoxxed.me/quickshell/quickshell',
         'github:InioX/matugen',
         'inputs.quickshell.follows = "quickshell";',
@@ -128,31 +132,56 @@ def test_home_profile_enables_illogical_impulse_and_owns_theme_contract():
     home = read_file("users/asura/default.nix")
     for literal in [
         "../../home/desktop/hyprland.nix",
+        "../../home/desktop/quickshell",
         "../../home/apps/browser.nix",
+        "../../home/apps/media.nix",
         "../../home/dev/ide.nix",
         "../../home/apps/mimeapps.nix",
+        "../../home/shell/terminal.nix",
         "stylix.enable = false;",
         'name = "Bibata-Modern-Classic";',
         'name = "adw-gtk3-dark";',
         'QT_STYLE_OVERRIDE = lib.mkForce "kvantum";',
         'QSG_RENDER_LOOP = "basic";',
         'xdg.configFile."Kvantum".enable = lib.mkForce true;',
-        'xdg.configFile."foot".enable = lib.mkForce false;',
-        'xdg.configFile."kitty".enable = lib.mkForce false;',
         "browser.enable = true;",
+        "media.enable = true;",
         "ide.enable = true;",
-        "home.activation.migrateFootDirectory",
-        'foot_dir="$HOME/.config/foot"',
+        "terminal.enable = true;",
+        "quickshell = {",
+        'activeProfile = "end4";',
+        "installIlyamiroProfile = true;",
+        "lowResource = true;",
         "mimeapps.enable = true;",
         'BROWSER = "google-chrome-stable";',
         '"org/blueman/general"',
         '"autostart/blueman.desktop".text',
         '"autostart/gnome-keyring-secrets.desktop".text',
         "systemd.user.services.blueman-applet",
-        'shell = "${pkgs.zsh}/bin/zsh";',
     ]:
         assert contains_literal(home, literal), f"Missing home literal: {literal}"
     assert contains_pattern(home, r"programs\.illogical-impulse\s*=\s*\{\s*enable\s*=\s*true;")
+
+
+def test_terminal_module_owns_kitty_and_foot_theme():
+    terminal = read_file("home/shell/terminal.nix")
+    for literal in [
+        'enable = lib.mkEnableOption "terminal emulator theming and ownership";',
+        'xdg.configFile."foot".enable = lib.mkForce false;',
+        'xdg.configFile."kitty".enable = lib.mkForce false;',
+        "home.activation.migrateFootDirectory",
+        'foot_dir="$HOME/.config/foot"',
+        "home.activation.migrateKittyDirectory",
+        'kitty_dir="$HOME/.config/kitty"',
+        "programs.foot = {",
+        "programs.kitty = {",
+        'shell = "${pkgs.zsh}/bin/zsh";',
+        'background = "#101317";',
+        'active_tab_background = "#7dd3fc";',
+        "window_padding_width = 12;",
+        "clipboard_control write-clipboard write-primary read-clipboard read-primary",
+    ]:
+        assert contains_literal(terminal, literal), f"Missing terminal literal: {literal}"
 
 
 def test_browser_module_themes_firefox_and_configures_chrome():
@@ -430,7 +459,7 @@ def test_hyprland_uses_classic_layout_and_perf_friendly_rules():
         "workspace_swipe_distance = 110",
         "workspace_swipe_cancel_ratio = 0.12",
         "workspace_swipe_min_speed_to_force = 4",
-        "workspace_swipe_create_new = false",
+        "workspace_swipe_create_new = true",
         "workspace_swipe_forever = false",
         "workspace_swipe_use_r = false",
         "no_focus_fallback = true",
@@ -466,6 +495,7 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         'pkgs.writeShellScriptBin "quickshell-wallpaper-selector"',
         "${pkgs.fuzzel}/bin/fuzzel",
         "workspaceDispatchBinds = lib.concatStringsSep",
+        "exec-once = quickshell-session start &",
         "hyprIdleConf = ''",
         '$lock_cmd = ${quickshellLock}/bin/quickshell-lock',
         '${quickshellLockFocus}/bin/quickshell-lock-focus',
@@ -481,14 +511,18 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "bind = $mainMod, J, togglesplit,",
         "bind = $mainMod, B, exec, ${pkgs.google-chrome}/bin/google-chrome-stable",
         "bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty",
+        "bind = $mainMod, Return, exec, ${pkgs.kitty}/bin/kitty",
         "bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland",
         "bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop",
         "bind = $mainMod, D, exec, search-launcher",
         "bind = $mainMod, Space, exec, search-launcher",
+        "bindr = $mainMod, SUPER_L, exec, search-launcher",
+        "bindr = $mainMod, SUPER_R, exec, search-launcher",
         "bind = $shiftMod, Tab, exec, quickshell-overview",
         "bind = CTRL, L, exec, quickshell-lock",
         "bind = $mainMod, L, exec, quickshell-lock",
         "bind = $shiftMod, C, exec, clipboard",
+        "bind = $altMod, C, exec, clipboard",
         "bind = $mainMod, P, exec, quickshell-wallpaper-selector",
         "bind = $shiftMod, P, exec, wallpaper-random",
         "bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji",
@@ -523,7 +557,6 @@ def test_hyprland_keymap_matches_requested_classic_binds():
         "Intentionally empty.",
     ]:
         assert contains_literal(hyprland, literal), f"Missing keybind literal: {literal}"
-    assert not_contains_literal(hyprland, "bind = Super, Super_L, exec, search-launcher")
     assert not_contains_literal(hyprland, "bind = Super, Super_R, exec, search-launcher")
     assert not_contains_literal(hyprland, "bindn = $mainMod, W, global, quickshell:searchToggleReleaseInterrupt")
     assert not_contains_literal(hyprland, "bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease")
@@ -545,8 +578,7 @@ def test_portal_module_keeps_hyprland_and_gtk_backends():
 def test_boot_module_caps_saved_system_generations():
     boot = read_file("modules/boot.nix")
     assert contains_literal(boot, 'windowsEspPartUuid = "2e64ad33-87cf-49fc-971a-ef00da61c67b";')
-    assert contains_literal(boot, "linuxPackages_7_0")
-    assert contains_literal(boot, "pkgs.linuxPackages_zen")
+    assert contains_literal(boot, "pkgs.linuxPackages_latest")
     assert contains_literal(boot, "limine = {")
     assert contains_literal(boot, "maxGenerations = 7;")
     assert contains_literal(boot, 'windowsBootManagerPath = "/EFI/Microsoft/Boot/bootmgfw.efi";')
@@ -644,6 +676,12 @@ def test_nbfc_config_is_split_between_service_state_and_model_curve():
         hardware_monitor,
         "MODEL_CONFIG=\"$(${pkgs.jq}/bin/jq -r '.SelectedConfigId // empty' /etc/nbfc/nbfc.json 2>/dev/null || true)\"",
     )
+    assert contains_literal(hardware_monitor, 'chip "coretemp-isa-*"')
+    assert not_contains_literal(hardware_monitor, 'chip "coretemp-isa-*" {')
+    assert contains_literal(hardware_monitor, "read_cpu_temp_millic()")
+    assert contains_literal(hardware_monitor, "temp_millic_to_c()")
+    assert contains_literal(hardware_monitor, "fan_sensor_available()")
+    assert contains_literal(hardware_monitor, "Fan RPM sensor unavailable in hwmon")
     assert not_contains_literal(hardware_monitor, "pkgs.sensors")
 
 
@@ -690,14 +728,31 @@ def test_packages_module_drops_duplicate_gui_file_managers():
     assert contains_literal(packages, "yazi")
     assert contains_literal(packages, "wl-clipboard")
     assert contains_literal(packages, "cliphist")
-    assert contains_literal(packages, "vlc")
+    assert not_contains_literal(packages, "vlc")
+    assert not_contains_literal(packages, "ani-cli")
+    assert not_contains_literal(packages, "pavucontrol")
     assert not_contains_literal(packages, "nautilus")
     assert not_contains_literal(packages, "thunar")
     assert not_contains_literal(packages, "programs.firefox")
 
 
+def test_media_module_adds_camera_microphone_and_playback_tools():
+    media = read_file("home/apps/media.nix")
+    for literal in [
+        'enable = lib.mkEnableOption "camera, microphone, PipeWire, and media tools";',
+        "snapshot",
+        "cameractrls",
+        "pwvucontrol",
+        "crosspipe",
+        "alsa-utils",
+        "vlc",
+        "ani-cli",
+    ]:
+        assert contains_literal(media, literal), f"Missing media literal: {literal}"
+
+
 def test_quickshell_resource_integration_uses_hwmon_json():
-    quickshell_module = read_file("home/desktop/quickshell-integration.nix")
+    quickshell_module = read_file("home/desktop/quickshell/default.nix")
     end4_settings = read_file("home/desktop/end4/settings.nix")
     resource_service = read_file("home/desktop/end4/overrides/ResourceService.qml")
     resources_bar = read_file("home/desktop/end4/overrides/Resources.qml")
@@ -707,17 +762,27 @@ def test_quickshell_resource_integration_uses_hwmon_json():
         'cp ${./overrides/Resources.qml} "$out/ii/modules/ii/bar/Resources.qml"',
         'cp ${./overrides/ResourcesPopup.qml} "$out/ii/modules/ii/bar/ResourcesPopup.qml"',
         'cp ${./overrides/ResourceService.qml} "$out/ii/services/ResourceService.qml"',
-        's|@staleAfterMs@|${toString (config.modules.quickshellIntegration.updateInterval * 3)}|g',
+        "config.modules.quickshell.updateInterval * 3",
         's|interval: 200|interval: 1000|',
     ]:
         assert contains_literal(end4_settings, literal), f"Missing quickshell patch literal: {literal}"
 
     for literal in [
-        'enable = lib.mkEnableOption "Quickshell resource monitoring integration";',
+        'enable = lib.mkEnableOption "central Quickshell profile, clipboard, and resource integration";',
+        "activeProfile = lib.mkOption {",
+        'default = "end4";',
+        "installIlyamiroProfile = lib.mkOption {",
+        'pkgs.writeShellScriptBin "quickshell-session"',
+        'pkgs.writeShellScriptBin "quickshell-switch"',
+        "systemd.user.services.cliphist-text",
+        "systemd.user.services.cliphist-image",
+        "ilyamiro-quickshell-scripts-low-resource",
+        "openGuideAtStartup: false",
         "updateInterval = lib.mkOption {",
-        'description = "Resource data staleness window in milliseconds";',
+        "Resource data staleness window in milliseconds.",
     ]:
         assert contains_literal(quickshell_module, literal), f"Missing quickshell option literal: {literal}"
+    assert not_contains_literal(quickshell_module, "\n      rofi\n")
 
     for literal in [
         "pragma Singleton",
@@ -791,7 +856,9 @@ def test_docs_match_the_current_end4_stack():
     for literal in [
         "Hyprland 0.54 (Wayland) + i3 (X11 fallback)",
         "QuickShell",
-        "Super+Space` / `Super+D` | Launcher",
+        "Super` / `Super+Space` / `Super+D` | Launcher",
+        "quickshell-switch ilyamiro",
+        "ilyamiro/nixos-configuration",
         "3-finger horizontal swipe",
         "Browser (Chrome)",
         "File manager (Nemo)",
@@ -802,7 +869,7 @@ def test_docs_match_the_current_end4_stack():
         assert contains_literal(readme, literal), f"Missing README literal: {literal}"
 
     assert not_contains_literal(readme, "HYPRLAND_CONTROLS.md")
-    assert not_contains_literal(readme, "Super` (release) | Launcher")
+    assert contains_literal(readme, "creating the next inactive workspace")
 
     for literal in [
         "appearance.wallpaperTheming.enableAppsAndShell = true",
@@ -836,6 +903,13 @@ def test_docs_match_the_current_end4_stack():
     assert not_contains_literal(readme, "Super+W")
     assert not_contains_literal(readme, "tap/release Super")
     assert not_contains_literal(readme, "HYPRLAND_CONTROLS.md")
+    for removed_doc in [
+        "docs/FINAL_STATUS.md",
+        "docs/PROJECT_SUMMARY.md",
+        "docs/QUICK_REFERENCE.md",
+        "docs/SYSTEM_ARCHITECTURE.md",
+    ]:
+        assert not os.path.exists(nix_file_path(removed_doc))
     assert not os.path.exists(nix_file_path("PLAN.md"))
     assert not os.path.exists(nix_file_path("KEYBINDINGS.md"))
     assert os.path.exists(nix_file_path("END4_SETTINGS.md"))

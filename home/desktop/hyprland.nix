@@ -41,8 +41,8 @@ let
       [
         "# exec-once = easyeffects --hide-window --service-mode  # Disabled for idle RSS/process targets"
         "# exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh  # Disabled for faster static-wallpaper startup"
-        "exec-once = qs -p $qsConfig &"
-        "qs -p $qsConfig ipc call cliphistService update"
+        "exec-once = quickshell-session start &"
+        "# Clipboard history is managed by Home Manager user services"
         "# exec-once = gnome-keyring-daemon --start --components=secrets  # Managed by PAM + system keyring service"
       ]
       (builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/execs.conf");
@@ -119,6 +119,14 @@ let
   clipboardPicker = pkgs.writeShellScriptBin "clipboard" ''
     set -euo pipefail
 
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
+      exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle clipboard
+    fi
+
     selection="$(${pkgs.cliphist}/bin/cliphist list | ${pkgs.wofi}/bin/wofi --dmenu -i -p clipboard 2>/dev/null || true)"
     [ -n "$selection" ] || exit 0
 
@@ -128,8 +136,16 @@ let
   searchLauncher = pkgs.writeShellScriptBin "search-launcher" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call search toggle
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
+      exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle applauncher
+    fi
+
+    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec qs -p "$HOME/.config/quickshell/ii" ipc call search toggle
     fi
 
     if ${pkgs.procps}/bin/pgrep -x fuzzel >/dev/null 2>&1; then
@@ -142,8 +158,16 @@ let
   quickshellOverview = pkgs.writeShellScriptBin "quickshell-overview" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call search workspacesToggle
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
+      exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle guide
+    fi
+
+    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec qs -p "$HOME/.config/quickshell/ii" ipc call search workspacesToggle
     fi
 
     exec ${searchLauncher}/bin/search-launcher
@@ -152,8 +176,16 @@ let
   quickshellLock = pkgs.writeShellScriptBin "quickshell-lock" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call lock activate
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -f "$HOME/.config/hypr/scripts/quickshell/Lock.qml" ]; then
+      exec quickshell -p "$HOME/.config/hypr/scripts/quickshell/Lock.qml"
+    fi
+
+    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec qs -p "$HOME/.config/quickshell/ii" ipc call lock activate
     fi
 
     exec ${pkgs.systemd}/bin/loginctl lock-session
@@ -162,8 +194,16 @@ let
   quickshellLockFocus = pkgs.writeShellScriptBin "quickshell-lock-focus" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call lock focus
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -f "$HOME/.config/hypr/scripts/quickshell/Lock.qml" ]; then
+      exec ${quickshellLock}/bin/quickshell-lock
+    fi
+
+    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec qs -p "$HOME/.config/quickshell/ii" ipc call lock focus
     fi
 
     exec ${quickshellLock}/bin/quickshell-lock
@@ -172,8 +212,16 @@ let
   quickshellWallpaperSelector = pkgs.writeShellScriptBin "quickshell-wallpaper-selector" ''
     set -euo pipefail
 
-    if ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec ${pkgs.quickshell}/bin/qs -p "$HOME/.config/quickshell/ii" ipc call wallpaperSelector toggle
+    profile_file="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/profile"
+    profile="end4"
+    [ -s "$profile_file" ] && read -r profile < "$profile_file"
+
+    if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
+      exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle wallpaper
+    fi
+
+    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
+      exec qs -p "$HOME/.config/quickshell/ii" ipc call wallpaperSelector toggle
     fi
 
     exec ${wallpaperRandom}/bin/wallpaper-random
@@ -322,10 +370,13 @@ let
         bind = $mainMod, J, togglesplit,
         bind = $mainMod, B, exec, ${pkgs.google-chrome}/bin/google-chrome-stable
         bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
+        bind = $mainMod, Return, exec, ${pkgs.kitty}/bin/kitty
         bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
         bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
         bind = $mainMod, D, exec, search-launcher
         bind = $mainMod, Space, exec, search-launcher
+        bindr = $mainMod, SUPER_L, exec, search-launcher
+        bindr = $mainMod, SUPER_R, exec, search-launcher
         
         bind = $mainMod, Tab, submap, resize
         bind = $shiftMod, Tab, exec, quickshell-overview
@@ -334,6 +385,7 @@ let
 
         # Utilities.
         bind = $shiftMod, C, exec, clipboard
+        bind = $altMod, C, exec, clipboard
         bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
         bind = $mainMod, P, exec, quickshell-wallpaper-selector
         bind = $shiftMod, P, exec, wallpaper-random
@@ -430,7 +482,7 @@ let
         workspace_swipe_invert = false
         workspace_swipe_direction_lock = true
         workspace_swipe_direction_lock_threshold = 6
-        workspace_swipe_create_new = false
+        workspace_swipe_create_new = true
         workspace_swipe_forever = false
         workspace_swipe_use_r = false
     }
@@ -456,7 +508,7 @@ let
         dim_inactive = false
 
         blur {
-            enabled = true
+            enabled = false
             xray = false
             size = 4
             passes = 1

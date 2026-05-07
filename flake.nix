@@ -35,6 +35,11 @@
       inputs.quickshell.follows = "quickshell";
     };
 
+    ilyamiro-nixos-configuration = {
+      url = "github:ilyamiro/nixos-configuration";
+      flake = false;
+    };
+
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";

@@ -19,7 +19,7 @@ let
     # This file is loaded by the lm-sensors service
     
     # Intel Core 12th Gen thermal zones
-    chip "coretemp-isa-*" {
+    chip "coretemp-isa-*"
       label temp1 "Package"
       label temp2 "Core 0"
       label temp3 "Core 1"
@@ -34,15 +34,13 @@ let
       ignore temp6
       ignore temp7
       ignore temp8
-    }
     
     # ACPI thermal zones
-    chip "acpitz-acpi-*" {
+    chip "acpitz-acpi-*"
       label temp1 "ACPI Thermal Zone 0"
-    }
     
     # NVMe SSD temperature
-    chip "nvme-pci-*" {
+    chip "nvme-pci-*"
       label temp1 "Composite"
       label temp2 "Sensor 1"
       label temp3 "Sensor 2"
@@ -54,12 +52,10 @@ let
       ignore temp6
       ignore temp7
       ignore temp8
-    }
     
     # Intel PCH (Platform Controller Hub)
-    chip "pch_cannonlake-*" {
+    chip "pch_cannonlake-*"
       label temp1 "PCH Temperature"
-    }
   '';
 
   # ═══════════════════════════════════════════════════════════════════════════
@@ -361,6 +357,83 @@ let
     error() {
       echo "[ERROR] $*" | tee -a "$LOG_FILE" >&2
     }
+
+    read_sensor_number() {
+      local path="''${1:-}"
+      local value=""
+
+      [ -r "$path" ] || return 1
+      value="$(${pkgs.coreutils}/bin/tr -cd '0-9\n' < "$path" | ${pkgs.gawk}/bin/awk 'NF { print $1; exit }')"
+      case "$value" in
+        ""|*[!0-9]*) return 1 ;;
+        *) printf '%s\n' "$value" ;;
+      esac
+    }
+
+    read_max_sensor() {
+      local path value max=0 found=0
+
+      for path in "$@"; do
+        [ -r "$path" ] || continue
+        value="$(read_sensor_number "$path" || true)"
+        case "$value" in
+          ""|*[!0-9]*) continue ;;
+        esac
+        if [ "$value" -gt "$max" ]; then
+          max="$value"
+        fi
+        found=1
+      done
+
+      if [ "$found" -eq 1 ]; then
+        printf '%s\n' "$max"
+      else
+        printf '0\n'
+      fi
+    }
+
+    read_cpu_temp_millic() {
+      read_max_sensor /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input
+    }
+
+    fan_sensor_available() {
+      local path
+      for path in /sys/class/hwmon/hwmon*/fan*_input; do
+        [ -r "$path" ] && return 0
+      done
+      return 1
+    }
+
+    read_fan_rpm() {
+      if fan_sensor_available; then
+        read_max_sensor /sys/class/hwmon/hwmon*/fan*_input
+      else
+        printf 'N/A\n'
+      fi
+    }
+
+    is_sensor_number() {
+      case "''${1:-}" in
+        ""|*[!0-9]*) return 1 ;;
+        *) return 0 ;;
+      esac
+    }
+
+    temp_millic_to_c() {
+      ${pkgs.gawk}/bin/awk -v temp="''${1:-0}" 'BEGIN {
+        if (temp ~ /^[0-9]+$/) {
+          printf "%.1f", temp / 1000
+        } else {
+          printf "N/A"
+        }
+      }'
+    }
+
+    temp_below_c() {
+      ${pkgs.gawk}/bin/awk -v temp="''${1:-0}" -v limit="''${2:-0}" 'BEGIN {
+        exit !(temp + 0 < limit + 0)
+      }'
+    }
     
     # ═════════════════════════════════════════════════════════════════════════
     # SENSOR DETECTION
@@ -422,9 +495,9 @@ let
       log "═══════════════════════════════════════════════════════════"
       
       # Read initial fan speed
-      FAN_BEFORE=$(cat /sys/class/hwmon/hwmon*/fan1_input 2>/dev/null | head -1 || echo 0)
-      TEMP_BEFORE=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 || echo 0)
-      TEMP_BEFORE_C=$(echo "scale=1; $TEMP_BEFORE/1000" | bc 2>/dev/null || echo "N/A")
+      FAN_BEFORE="$(read_fan_rpm)"
+      TEMP_BEFORE="$(read_cpu_temp_millic)"
+      TEMP_BEFORE_C="$(temp_millic_to_c "$TEMP_BEFORE")"
       
       log ">>> Initial State:"
       log "    Fan Speed: ''${FAN_BEFORE} RPM"
@@ -455,9 +528,9 @@ let
         # Monitor during stress
         for i in {1..5}; do
           sleep 2
-          FAN=$(cat /sys/class/hwmon/hwmon*/fan1_input 2>/dev/null | head -1 || echo 0)
-          TEMP=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 || echo 0)
-          TEMP_C=$(echo "scale=1; $TEMP/1000" | bc 2>/dev/null || echo "N/A")
+          FAN="$(read_fan_rpm)"
+          TEMP="$(read_cpu_temp_millic)"
+          TEMP_C="$(temp_millic_to_c "$TEMP")"
           log "    T+''${i}s: Fan=''${FAN} RPM, Temp=''${TEMP_C}°C"
         done
         
@@ -467,9 +540,9 @@ let
         log "    Waiting 15s for cooldown..."
         sleep 15
         
-        FAN_AFTER=$(cat /sys/class/hwmon/hwmon*/fan1_input 2>/dev/null | head -1 || echo 0)
-        TEMP_AFTER=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 || echo 0)
-        TEMP_AFTER_C=$(echo "scale=1; $TEMP_AFTER/1000" | bc 2>/dev/null || echo "N/A")
+        FAN_AFTER="$(read_fan_rpm)"
+        TEMP_AFTER="$(read_cpu_temp_millic)"
+        TEMP_AFTER_C="$(temp_millic_to_c "$TEMP_AFTER")"
         
         log ""
         log ">>> Post-Test State:"
@@ -477,8 +550,10 @@ let
         log "    CPU Temp: ''${TEMP_AFTER_C}°C"
         
         # Validate response
-        if [ "$FAN_AFTER" -lt "$FAN_BEFORE" ] || [ "$FAN_AFTER" -eq 0 ]; then
-          if [ "$TEMP_AFTER_C" != "N/A" ] && [ "$(echo "$TEMP_AFTER_C < 50" | bc 2>/dev/null || echo 0)" -eq 1 ]; then
+        if ! is_sensor_number "$FAN_BEFORE" || ! is_sensor_number "$FAN_AFTER"; then
+          log "    [!] Fan RPM sensor unavailable in hwmon; NBFC service and PWM curve are configured"
+        elif [ "$FAN_AFTER" -lt "$FAN_BEFORE" ] || [ "$FAN_AFTER" -eq 0 ]; then
+          if [ "$TEMP_AFTER_C" != "N/A" ] && temp_below_c "$TEMP_AFTER_C" 50; then
             log "    [✓] Fan response valid (temp normalized)"
           else
             error "Fan response may be abnormal (speed did not reduce with temp)"
@@ -580,6 +655,50 @@ let
     
     # Setup CSV header
     echo "time,cpu_temp,cpu_freq,fan_rpm,gpu_temp,load_1min,throttle_count" > "$OUTPUT_FILE"
+
+    read_sensor_number() {
+      local path="''${1:-}"
+      local value=""
+
+      [ -r "$path" ] || return 1
+      value="$(${pkgs.coreutils}/bin/tr -cd '0-9\n' < "$path" | ${pkgs.gawk}/bin/awk 'NF { print $1; exit }')"
+      case "$value" in
+        ""|*[!0-9]*) return 1 ;;
+        *) printf '%s\n' "$value" ;;
+      esac
+    }
+
+    read_max_sensor() {
+      local path value max=0 found=0
+
+      for path in "$@"; do
+        [ -r "$path" ] || continue
+        value="$(read_sensor_number "$path" || true)"
+        case "$value" in
+          ""|*[!0-9]*) continue ;;
+        esac
+        if [ "$value" -gt "$max" ]; then
+          max="$value"
+        fi
+        found=1
+      done
+
+      if [ "$found" -eq 1 ]; then
+        printf '%s\n' "$max"
+      else
+        printf '0\n'
+      fi
+    }
+
+    temp_millic_to_c() {
+      ${pkgs.gawk}/bin/awk -v temp="''${1:-0}" 'BEGIN {
+        if (temp ~ /^[0-9]+$/) {
+          printf "%.1f", temp / 1000
+        } else {
+          printf "0.0"
+        }
+      }'
+    }
     
     cleanup() {
       echo -e "\n>>> Stopping validation..."
@@ -651,9 +770,10 @@ let
         local elapsed=$(( $(date +%s) - start_time ))
         
         # Read sensors
-        local cpu_temp=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 || echo 0)
+        local cpu_temp_millic="$(read_max_sensor /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input)"
+        local cpu_temp="$(temp_millic_to_c "$cpu_temp_millic")"
         local cpu_freq=$(cat /proc/cpuinfo | grep "cpu MHz" | head -1 | awk '{print $4}' || echo 0)
-        local fan_rpm=$(cat /sys/class/hwmon/hwmon*/fan1_input 2>/dev/null | head -1 || echo 0)
+        local fan_rpm="$(read_max_sensor /sys/class/hwmon/hwmon*/fan*_input)"
         local load=$(cat /proc/loadavg | cut -d' ' -f1)
         local throttle=$(cat /sys/devices/system/cpu/cpu0/thermal_throttle/throttle_count 2>/dev/null || echo 0)
         
@@ -666,7 +786,7 @@ let
         echo "$elapsed,$cpu_temp,$cpu_freq,$fan_rpm,$gpu_temp,$load,$throttle" >> "$OUTPUT_FILE"
         
         # Progress display
-        printf "\r  Progress: ''${elapsed}s / ''${DURATION}s (Temp: ''${cpu_temp%??}°C, Fan: ''${fan_rpm} RPM)"
+        printf "\r  Progress: ''${elapsed}s / ''${DURATION}s (Temp: ''${cpu_temp}°C, Fan: ''${fan_rpm} RPM)"
         
         sleep 1
       done

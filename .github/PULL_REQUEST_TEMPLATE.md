@@ -14,7 +14,7 @@ Paste command output or confirm each check:
 
 ## Docs
 
-- [ ] Updated relevant docs (`README.md`, `END4_SETTINGS.md`, `HYPRLAND_CONTROLS.md`)
+- [ ] Updated relevant docs (`README.md`, `END4_SETTINGS.md`, `docs/X15_UNIFIED_WORKFLOW.md`)
 
 ## Notes
 

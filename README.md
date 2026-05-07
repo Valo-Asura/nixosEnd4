@@ -34,9 +34,9 @@ nix flake update
 ## System Overview
 
 - **OS**: NixOS 26.05 (unstable)
-- **Kernel**: Linux 7.0.1 (CachyOS-optimized)
+- **Kernel**: Linux 7.0.3 via `linuxPackages_latest`
 - **Desktop**: Hyprland 0.54 (Wayland) + i3 (X11 fallback)
-- **Shell**: End-4 Illogical Impulse (QuickShell)
+- **Shell**: QuickShell profiles: End-4 default, ilyamiro optional
 - **Display Manager**: greetd + tuigreet
 - **Theme**: adw-gtk3-dark + Kvantum + Bibata-Modern-Classic
 - **Bootloader**: Limine (Secure Boot ready)
@@ -57,7 +57,7 @@ nix flake update
 - 144Hz display support
 
 ### Desktop Environments
-- **Hyprland** (Primary): Dynamic tiling, 3-finger gestures, hardware acceleration
+- **Hyprland** (Primary): Dynamic tiling, 3-finger gestures, profile-switched QuickShell
 - **i3** (Fallback): X11 compatibility, mirrored keybindings
 
 ### Development
@@ -84,10 +84,10 @@ nix flake update
 │   ├── system-cleanup.nix
 │   └── secure-boot/             # Secure Boot support
 ├── home/                        # User configuration
-│   ├── desktop/                 # Hyprland, i3, End-4
+│   ├── desktop/                 # Hyprland, i3, QuickShell, End-4
 │   ├── dev/                     # Git, IDEs, AI tools
-│   ├── apps/                    # Browser, file manager
-│   └── shell/                   # Zsh, terminal config
+│   ├── apps/                    # Browser, media, MIME, file manager
+│   └── shell/                   # Zsh, terminal, fastfetch config
 ├── users/asura/                 # User-specific settings
 └── docs/                        # Documentation
 ```
@@ -99,6 +99,7 @@ nix flake update
 - `hyprland` - v0.54.0 compositor
 - `quickshell` - End-4 shell
 - `illogical-flake` - End-4 dotfiles
+- `ilyamiro-nixos-configuration` - ilyamiro QuickShell profile only
 - `zen-browser` - Privacy-focused browser
 - `matugen` - Color scheme generator
 - `stylix` - System-wide theming
@@ -110,15 +111,17 @@ nix flake update
 |-----|--------|
 | `Super+Q` | Kill window |
 | `Super+T` | Terminal (Kitty) |
+| `Super+Return` | Terminal (Kitty) |
 | `Super+B` | Browser (Chrome) |
 | `Super+F` | File manager (Nemo) |
-| `Super+Space` / `Super+D` | Launcher |
+| `Super` / `Super+Space` / `Super+D` | Launcher |
 | `Super+L` / `Ctrl+L` | Lock screen |
+| `Super+Shift+C` / `Super+Alt+C` | Clipboard |
 | `Super+Tab` | Resize mode |
 | `Super+Shift+Tab` | Workspace overview |
 | `Super+1-9` | Switch workspace |
 | `Super+Shift+1-9` | Move window to workspace |
-| `3-finger horizontal swipe` | Switch workspace |
+| `3-finger horizontal swipe` | Switch workspace, creating the next inactive workspace at the edge |
 
 ### i3
 Same keybindings as Hyprland, except:
@@ -127,7 +130,7 @@ Same keybindings as Hyprland, except:
 ## Modules
 
 ### Core System
-- **boot.nix** - Limine bootloader, quiet boot, kernel parameters
+- **boot.nix** - Limine bootloader and latest packaged kernel selection
 - **nvidia.nix** - Hybrid graphics, Prime Offload, power management
 - **performance.nix** - Base performance tuning (3 profiles: max/balanced/cool)
 - **performance-enhanced.nix** - CachyOS kernel optimizations
@@ -141,9 +144,29 @@ Same keybindings as Hyprland, except:
 - **ollama.nix** - Local LLM server with GPU acceleration
 - **i3-session.nix** - X11 fallback session
 - **system-cleanup.nix** - Automated maintenance (GC, optimization)
+- **home/apps/media.nix** - Camera, microphone, PipeWire graph, and playback tools
+- **home/shell/terminal.nix** - Kitty and Foot theme ownership
 
 ### Security
 - **secure-boot/** - Secure Boot support with Lanzaboote (optional)
+
+## QuickShell Profiles
+
+End-4 stays the default profile. The ilyamiro repository is pinned as a flake input and only its `config/sessions/hyprland/scripts` QuickShell tree is copied into `~/.config/hypr/scripts`; its NixOS and Hyprland system config are not imported.
+
+```bash
+# Show active profile
+quickshell-profile
+
+# Switch live profile and restart QuickShell
+quickshell-switch end4
+quickshell-switch ilyamiro
+
+# Restart whichever profile is active
+quickshell-reload
+```
+
+Clipboard history is captured by Home Manager user services (`cliphist-text` and `cliphist-image`), so `clipboard` works with either profile.
 
 ## Secure Boot Setup
 
@@ -283,6 +306,7 @@ sudo rm /var/cache/tuigreet/lastsession-*
 
 ## Documentation
 
+- **README.md** - Central system, controls, performance, and maintenance reference
 - **[END4_SETTINGS.md](./END4_SETTINGS.md)** - End-4 shell configuration
 - **[docs/X15_UNIFIED_WORKFLOW.md](./docs/X15_UNIFIED_WORKFLOW.md)** - AI workstation workflow and local LLM notes
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Contribution guidelines
@@ -302,6 +326,7 @@ sudo rm /var/cache/tuigreet/lastsession-*
 ### Desktop Environment & Shell
 - **[end-4/illogical-impulse](https://github.com/end-4/illogical-impulse)** - Beautiful, feature-rich shell and UX design
 - **[soymou/illogical-flake](https://github.com/soymou/illogical-flake)** - Nix flake wrapper for End-4's dotfiles
+- **[ilyamiro/nixos-configuration](https://github.com/ilyamiro/nixos-configuration)** - Optional QuickShell profile source
 - **[QuickShell](https://git.outfoxxed.me/quickshell/quickshell)** - Qt-based shell framework powering End-4
   - [QuickShell Documentation](https://quickshell.outfoxxed.me/)
   - [QuickShell GitHub Mirror](https://github.com/outfoxxed/quickshell)

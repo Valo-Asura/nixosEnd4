@@ -618,6 +618,22 @@
         "type": "github"
       }
     },
+    "ilyamiro-nixos-configuration": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778009848,
+        "narHash": "sha256-OlviCAtY5sogklaLv702iz+oWt2kHpz5kPYUGI/iOVU=",
+        "owner": "ilyamiro",
+        "repo": "nixos-configuration",
+        "rev": "d65bcb0cd2e4cc364c70cdc1b5fcfa6ff61b315c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ilyamiro",
+        "repo": "nixos-configuration",
+        "type": "github"
+      }
+    },
     "matugen": {
       "inputs": {
         "nixpkgs": [
@@ -641,11 +657,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1776877367,
-        "narHash": "sha256-EHq1/OX139R1RvBzOJ0aMRT3xnWyqtHBRUBuO1gFzjI=",
+        "lastModified": 1777954456,
+        "narHash": "sha256-hGdgeU2Nk87RAuZyYjyDjFL6LK7dAZN5RE9+hrDTkDU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "0726a0ecb6d4e08f6adced58726b95db924cef57",
+        "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
         "type": "github"
       },
       "original": {
@@ -750,6 +766,7 @@
         "home-manager": "home-manager",
         "hyprland": "hyprland",
         "illogical-flake": "illogical-flake",
+        "ilyamiro-nixos-configuration": "ilyamiro-nixos-configuration",
         "matugen": "matugen",
         "nixpkgs": "nixpkgs",
         "quickshell": "quickshell",

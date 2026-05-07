@@ -3,6 +3,7 @@
 This flake keeps end-4 / Illogical Impulse settings in two layers:
 
 - Nix-owned defaults live in [home/desktop/end4/settings.nix](./home/desktop/end4/settings.nix).
+- Profile switching and clipboard services live in [home/desktop/quickshell/default.nix](./home/desktop/quickshell/default.nix).
 - Runtime state lives in `~/.config/illogical-impulse/config.json`.
 
 ## Core Values
@@ -44,6 +45,15 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 - Wallpapers below `1920x1080` are replaced with the bundled `3840x2160` default during Home Manager activation.
 - QuickShell reads live colors from `~/.config/matugen/colors.json`.
 
+## QuickShell Profiles
+
+- The default active profile is `end4`.
+- The ilyamiro profile is sourced from the pinned `ilyamiro-nixos-configuration` flake input, but only its QuickShell support scripts are installed.
+- Runtime switching is handled by `quickshell-switch end4` and `quickshell-switch ilyamiro`.
+- `quickshell-session start` is the single Hyprland startup entry point for both profiles.
+- Low-resource patches disable ilyamiro's startup guide/preload path and use slower system polling.
+- Clipboard capture is handled by the declarative `cliphist-text` and `cliphist-image` user services.
+
 ## Shell State Files
 
 - Home Manager bootstraps `~/.local/state/quickshell/user/todo.json` as a writable JSON array.
@@ -54,8 +64,9 @@ This flake keeps end-4 / Illogical Impulse settings in two layers:
 
 - Local Hyprland layer enforces `general.layout = dwindle`.
 - Panel mode is pinned to `eDP-1, 1920x1080@144, 0x0, 1, vrr, 0`.
-- Touchpad workspace swipe remains enabled (`3-finger horizontal`) from the upstream general config patch.
+- Touchpad workspace swipe remains enabled (`3-finger horizontal`) and can create the next inactive workspace at the edge.
 - `misc.vrr = 0`, `render.direct_scanout = false`, and `cursor.no_hardware_cursors = true` are set for hybrid laptop stability.
+- Hyprland blur is disabled in the local layer for lower GPU cost.
 
 ## Lock Behavior
 

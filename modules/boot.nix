@@ -23,12 +23,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    boot.kernelPackages =
-      if pkgs ? linuxPackages_7_0 then
-        # nixos-unstable has Linux 7.0.x before its downstream zen package catches up.
-        pkgs.linuxPackages_7_0
-      else
-        pkgs.linuxPackages_zen;
+    # Track the newest kernel packaged by the pinned nixpkgs input. Updating
+    # flake.lock moves this forward without chasing versioned attributes.
+    boot.kernelPackages = pkgs.linuxPackages_latest;
 
     boot.loader = {
       grub.enable = false;

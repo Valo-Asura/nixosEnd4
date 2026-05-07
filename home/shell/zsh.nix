@@ -28,8 +28,12 @@ in
         top = "btm";
         heat = "x15-thermals";
         pwr = "x15-power-status";
+        fans = "x15-sensors status";
         booterr = "journalctl -b -p warning --no-pager";
         fetch = "ffetch-theme";
+        cam = "snapshot";
+        mic = "pwvucontrol";
+        pipes = "crosspipe";
       };
 
       plugins = [
@@ -46,11 +50,22 @@ in
       ];
 
       initContent = ''
+        bindkey -e
+        setopt auto_pushd pushd_ignore_dups hist_reduce_blanks hist_verify interactive_comments
+        unsetopt beep
+        zstyle ':completion:*' menu select
+        zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+        zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
+
         if command -v any-nix-shell >/dev/null 2>&1; then
           any-nix-shell zsh --info-right | source /dev/stdin
         fi
 
-        if [[ -o interactive ]] && command -v ffetch-theme >/dev/null 2>&1 && [[ -t 1 ]]; then
+        if [[ -o interactive ]] &&
+           command -v ffetch-theme >/dev/null 2>&1 &&
+           [[ -t 1 ]] &&
+           [[ "''${FASTFETCH_ON_STARTUP:-1}" = 1 ]] &&
+           [[ -z "''${SSH_CONNECTION:-}" ]]; then
           ffetch-theme
         fi
 

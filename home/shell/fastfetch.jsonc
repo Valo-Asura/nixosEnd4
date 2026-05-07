@@ -1,15 +1,15 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "display": {
-    "separator": " :: ",
+    "separator": "  ",
     "key": {
       "type": "both"
     },
     "color": {
-      "keys": "light_red",
-      "title": "red",
+      "keys": "light_cyan",
+      "title": "cyan",
       "output": "white",
-      "separator": "light_red"
+      "separator": "bright_black"
     }
   },
   "modules": [
@@ -17,53 +17,75 @@
     "break",
     {
       "type": "custom",
-      "format": "┌─ Hardware Information"
+      "format": "[ Hardware ]"
+    },
+    {
+      "type": "host",
+      "key": "Machine"
     },
     {
       "type": "cpu",
-      "key": "│  CPU"
+      "key": "CPU"
     },
     {
       "type": "gpu",
-      "key": "│  GPU",
+      "key": "GPU",
       "hideType": "integrated"
     },
     {
       "type": "memory",
-      "key": "│  RAM"
+      "key": "RAM"
     },
     {
-      "type": "custom",
-      "format": "└────────────────────────────"
+      "type": "disk",
+      "key": "Disk",
+      "folders": "/"
+    },
+    {
+      "type": "battery",
+      "key": "Battery"
     },
     "break",
     {
       "type": "custom",
-      "format": "┌─ Software Information"
+      "format": "[ Session ]"
     },
     {
       "type": "os",
-      "key": "│  OS"
+      "key": "OS"
     },
     {
       "type": "kernel",
-      "key": "│  Kernel"
+      "key": "Kernel"
     },
     {
       "type": "uptime",
-      "key": "│  Uptime"
+      "key": "Uptime"
     },
     {
       "type": "shell",
-      "key": "│  Shell"
+      "key": "Shell"
+    },
+    {
+      "type": "terminal",
+      "key": "Terminal"
     },
     {
       "type": "wm",
-      "key": "│  WM"
+      "key": "WM"
+    },
+    {
+      "type": "packages",
+      "key": "Packages"
+    },
+    "break",
+    {
+      "type": "colors",
+      "symbol": "circle"
     },
     {
       "type": "custom",
-      "format": "└────────────────────────────"
+      "format": " "
     }
   ]
 }
