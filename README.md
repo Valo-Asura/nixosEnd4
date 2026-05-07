@@ -108,24 +108,21 @@ nix flake update
 ### Hyprland
 | Key | Action |
 |-----|--------|
-| `Super` (release) | Launcher |
 | `Super+Q` | Kill window |
 | `Super+T` | Terminal (Kitty) |
 | `Super+B` | Browser (Chrome) |
 | `Super+F` | File manager (Nemo) |
+| `Super+Space` / `Super+D` | Launcher |
 | `Super+L` / `Ctrl+L` | Lock screen |
 | `Super+Tab` | Resize mode |
 | `Super+Shift+Tab` | Workspace overview |
 | `Super+1-9` | Switch workspace |
 | `Super+Shift+1-9` | Move window to workspace |
-| `3-finger swipe` | Switch workspace |
+| `3-finger horizontal swipe` | Switch workspace |
 
 ### i3
 Same keybindings as Hyprland, except:
-- `Super+Space` or `Super+D` for launcher
 - `Super+Shift+Tab` for window overview
-
-See [HYPRLAND_CONTROLS.md](./HYPRLAND_CONTROLS.md) for complete reference.
 
 ## Modules
 
@@ -286,8 +283,8 @@ sudo rm /var/cache/tuigreet/lastsession-*
 
 ## Documentation
 
-- **[HYPRLAND_CONTROLS.md](./HYPRLAND_CONTROLS.md)** - Complete keybinding reference
 - **[END4_SETTINGS.md](./END4_SETTINGS.md)** - End-4 shell configuration
+- **[docs/X15_UNIFIED_WORKFLOW.md](./docs/X15_UNIFIED_WORKFLOW.md)** - AI workstation workflow and local LLM notes
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Contribution guidelines
 - **[modules/secure-boot/README.md](./modules/secure-boot/README.md)** - Secure Boot setup
 

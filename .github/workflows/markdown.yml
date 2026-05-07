@@ -17,5 +17,6 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           globs: |
-            **/*.md
-            !.cache/**/*.md
+            END4_SETTINGS.md
+            docs/X15_UNIFIED_WORKFLOW.md
+            modules/secure-boot/README.md

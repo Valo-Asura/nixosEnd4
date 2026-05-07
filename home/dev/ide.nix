@@ -76,6 +76,8 @@ in
       kiro
       antigravity
       windsurf
+      # Package versions still follow the flake pin, but keep the IDEs
+      # allowed to self-update and refresh extensions where their builds support it.
       # pythonToolchain is now exposed via home.sessionPath instead of home.packages
       # to avoid conflicts with other Python environments (e.g., end4/packages.nix)
       # trae: ByteDance AI IDE — no Linux build exists yet (macOS/Windows only).
@@ -100,8 +102,8 @@ in
       package = pkgs.vscode;
       profiles.default = {
         extensions = vscodeExtensions;
-        enableUpdateCheck = false;
-        enableExtensionUpdateCheck = false;
+        enableUpdateCheck = true;
+        enableExtensionUpdateCheck = true;
       };
     };
 
@@ -139,9 +141,9 @@ in
     home.activation.configureAllIdeNixSupport = lib.hm.dag.entryAfter [ "installOtherIdeExtensions" ] ''
       set -euo pipefail
       state_dir="$HOME/.local/state/nixos-ide"
-      # v6: switch IDEs to stable profile paths and expose a full Python toolchain.
-      marker="$state_dir/nix-settings-v6"
-      wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v6"
+      # v7: keep stable profile paths while allowing IDE and extension auto-updates.
+      marker="$state_dir/nix-settings-v7"
+      wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v7;updates=auto"
 
       mkdir -p "$state_dir"
 
@@ -172,7 +174,7 @@ in
             ."workbench.iconTheme" == "material-icon-theme" and
             ."window.commandCenter" == false and
             ."telemetry.telemetryLevel" == "off" and
-            ."update.mode" == "none" and
+            ."update.mode" == "start" and
             ."python.defaultInterpreterPath" == $python and
             ."python.languageServer" == $lang_server and
             ."python.analysis.typeCheckingMode" == "basic" and
@@ -184,6 +186,8 @@ in
             ."python.testing.unittestEnabled" == false and
             ."ruff.nativeServer" == "on" and
             ."jupyter.jupyterServerType" == "local" and
+            ."extensions.autoCheckUpdates" == true and
+            ."extensions.autoUpdate" == true and
             ."terminal.integrated.env.linux"."PIP_DISABLE_PIP_VERSION_CHECK" == "1" and
             ."terminal.integrated.env.linux"."UV_PYTHON" == $python and
             .["[python]"]["editor.defaultFormatter"] == "ms-python.black-formatter" and
@@ -229,7 +233,7 @@ in
             "editor.cursorSmoothCaretAnimation": "on",
             "editor.smoothScrolling": true,
             "telemetry.telemetryLevel": "off",
-            "update.mode": "none",
+            "update.mode": "start",
             "python.defaultInterpreterPath": $python,
             "python.languageServer": $lang_server,
             "python.analysis.typeCheckingMode": "basic",
@@ -241,8 +245,8 @@ in
             "python.testing.unittestEnabled": false,
             "ruff.nativeServer": "on",
             "jupyter.jupyterServerType": "local",
-            "extensions.autoCheckUpdates": false,
-            "extensions.autoUpdate": false,
+            "extensions.autoCheckUpdates": true,
+            "extensions.autoUpdate": true,
             "workbench.enableExperiments": false,
             "workbench.tips.enabled": false,
             "terminal.integrated.env.linux": {

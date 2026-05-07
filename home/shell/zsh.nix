@@ -21,6 +21,7 @@ in
 
       shellAliases = {
         ll = "eza -la --git";
+        cls = "clear";
         cat = "bat";
         find = "fd";
         grep = "rg";

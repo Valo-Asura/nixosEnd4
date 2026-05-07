@@ -272,9 +272,7 @@ let
       in
       ''
         bind = $mod, ${key}, workspace, ${ws}
-        bind = $shiftMod, ${key}, movetoworkspace, ${ws}
-        bindn = $mod, ${key}, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, ${key}, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger''
+        bind = $shiftMod, ${key}, movetoworkspace, ${ws}''
     ) 9
   );
 
@@ -328,42 +326,6 @@ let
         bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
         bind = $mainMod, D, exec, search-launcher
         bind = $mainMod, Space, exec, search-launcher
-        
-        # Super key release to toggle launcher (QuickShell integration).
-        # Only triggers if Super is pressed and released WITHOUT any other key.
-        bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease
-        
-        # Interrupt bindings: cancel launcher trigger when Super is used with other keys.
-        # These must be non-consuming (bindn) to allow the actual keybind to work.
-        bindn = $mainMod, Q, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, H, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, F, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, V, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, J, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, B, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, T, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, C, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, E, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, D, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Space, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, L, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, P, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Tab, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Left, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Right, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Up, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Down, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $mainMod, Print, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Tab, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, C, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, E, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, P, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, R, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Left, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Right, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Up, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Down, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
-        bindn = $shiftMod, Print, exec, qs -p ~/.config/quickshell/ii ipc call search cancelTrigger
         
         bind = $mainMod, Tab, submap, resize
         bind = $shiftMod, Tab, exec, quickshell-overview
@@ -468,7 +430,7 @@ let
         workspace_swipe_invert = false
         workspace_swipe_direction_lock = true
         workspace_swipe_direction_lock_threshold = 6
-        workspace_swipe_create_new = true
+        workspace_swipe_create_new = false
         workspace_swipe_forever = false
         workspace_swipe_use_r = false
     }

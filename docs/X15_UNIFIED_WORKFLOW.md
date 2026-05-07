@@ -30,14 +30,16 @@ The mindset here is simple: vibe coded, but validated properly. I let tools help
 
 ### 2.1 Where local AI tool state usually lives on Linux
 
-On Linux, most AI tools follow the normal XDG pattern:
+On Linux, local AI tooling usually follows the normal XDG layout:
 
-- `~/.config/` for user config, editor settings, extension state, and app-specific databases
-- `~/.local/share/` for persistent app data
-- `~/.cache/` for disposable caches, model metadata, and temporary indexing artifacts
-- `~/.local/state/` for mutable runtime-ish state that should survive restarts
+- `~/.config/` for user config, editor settings, extension state, and app databases
+- `~/.cache/` for disposable caches, embeddings caches, and temporary indexes
+- `~/.local/share/` for app data that should persist
+- `~/.local/state/` for mutable local state that should survive restarts but is not really config
 
-On this machine, the AI editor family is mostly living under `~/.config/`:
+For editor-based AI tools, the most common place to start is `~/.config/<AppName>/`.
+
+On this workstation, that means:
 
 - Cursor: `~/.config/Cursor/`
 - Windsurf: `~/.config/Windsurf/`
@@ -45,84 +47,93 @@ On this machine, the AI editor family is mostly living under `~/.config/`:
 - Antigravity: `~/.config/Antigravity/`
 - VS Code: `~/.config/Code/`
 
-Inside those directories, the useful subpaths are usually:
+Inside those app folders, the paths that usually matter are:
 
-- `User/settings.json` for editor settings
-- `User/workspaceStorage/` for per-workspace state and indexing side effects
-- `User/globalStorage/` for extension or agent state
-- `User/History/` for command/file history
-- `logs/` for debugging weird agent or extension behavior
-- `CachedData/`, `Code Cache/`, `GPUCache/` for Electron/Chromium cache layers
+- `User/settings.json` for editor and model settings
+- `User/workspaceStorage/` for per-project state and indexing
+- `User/globalStorage/` for extension-level state
+- `User/History/` for prompt/file/command history depending on the app
+- `logs/` for debugging agent errors
+- `Cache`, `CachedData`, `Code Cache`, and `GPUCache` for Electron/Chromium cache layers
 
-For Ollama, the exact storage layout depends on how it is installed, but the usual places to inspect are:
+### 2.2 Ollama, Continue, and IDE-specific storage
 
-- `~/.ollama/` for user-level keys and local client state
-- `/var/lib/ollama/` or a service-managed data directory for pulled model blobs on system installs
-- the Ollama service environment for host binding and port exposure
+For Ollama, I separate three things:
 
-On this machine, `~/.ollama/` currently contains the local key material:
+- local user state like keys under `~/.ollama/`
+- server-managed model storage, commonly under `/usr/share/ollama/.ollama/models` on Linux service installs
+- service configuration through environment variables such as `OLLAMA_HOST`
 
-- `~/.ollama/id_ed25519`
-- `~/.ollama/id_ed25519.pub`
+Important detail: Ollama itself is mainly a model server. Prompt history is often stored by the client or UI using Ollama, not by Ollama in one neat “chat history” file.
 
-For Continue.dev, I treat these as the first places to inspect:
+For Continue.dev, the first places I would inspect are:
 
-- `~/.continue/`
-- editor-side storage under `~/.config/Code/User/globalStorage/`
-- Cursor/Windsurf equivalents if Continue is installed there instead of plain VS Code
+- `~/.continue/config.yaml`
+- `~/.continue/.env`
+- `<project>/.continue/` for project-specific prompts, checks, or config fragments
+- editor extension state under `~/.config/Code/User/globalStorage/` or the equivalent folder in Cursor/Windsurf
 
-The exact path can shift between app versions, so I do not assume one hardcoded location forever. I usually confirm by checking `User/globalStorage`, `workspaceStorage`, and `logs` first.
+For Cursor, Windsurf, and Kiro, the practical pattern is similar:
 
-### 2.2 How editor agents and indexing usually behave
+- settings in `User/settings.json`
+- indexing and per-project memory in `User/workspaceStorage/`
+- extension state in `User/globalStorage/`
+- logs in `logs/`
 
-Cursor, Windsurf, Kiro, and similar Electron-based IDEs tend to follow the same pattern:
+That is usually where “why is this AI tool acting strange?” gets solved:
 
-- they keep user settings in `User/settings.json`
-- they build per-workspace indexes inside `User/workspaceStorage/`
-- they write extension state to `User/globalStorage/`
-- they keep logs under `logs/`
-- they cache webview, GPU, and model-adjacent data under `Cache`, `CachedData`, and `GPUCache`
-
-That matters for debugging because “the AI is acting weird” is often just:
-
-- stale workspace indexing
-- old extension state
-- a broken path in `settings.json`
-- an Electron cache issue
-- a mismatch between the terminal Python and the editor Python
+- stale index
+- broken workspace state
+- bad model config
+- wrong Python/interpreter path
+- old cache or extension state
 
 ### 2.3 Exposing a local LLM server on the LAN
 
-The easiest pattern is:
+The simplest setup is:
 
 1. Run Ollama on the workstation.
-2. Bind it to a LAN-reachable address instead of localhost.
-3. Allow only the local subnet through the firewall.
-4. Put a tiny API layer in front if I want prompt templates, retrieval, logging, or auth.
+2. Change the bind address from localhost to a LAN address.
+3. Open the firewall only for trusted devices on the local network.
+4. Optionally put FastAPI in front of it instead of exposing raw Ollama directly.
 
-At a basic level, another device can talk to the workstation over HTTP if Ollama is listening on something like:
+Ollama listens on `127.0.0.1:11434` by default. A common way to expose it on the LAN is to set:
 
 ```text
-0.0.0.0:11434
+OLLAMA_HOST=0.0.0.0:11434
 ```
 
-Then a laptop, phone, or another dev box on the same network can send requests to:
+Then another machine on the same network can send prompts to:
 
 ```text
 http://<workstation-ip>:11434/api/generate
 ```
 
-I usually prefer wrapping that with FastAPI so I can control:
+If I want a cleaner workflow, I usually place a small FastAPI wrapper in front of Ollama so I can decide:
 
-- which model gets used
-- what prompt format is allowed
-- whether retrieval context gets injected
-- whether requests are logged
-- whether the endpoint stays LAN-only
+- which model gets called
+- what prompt shape is allowed
+- whether retrieval context gets added
+- whether request logging is enabled
+- whether the endpoint should stay LAN-only
 
-### 2.4 Simple RAG flow
+### 2.4 How another device can send prompts
 
-The RAG path I experiment with is intentionally small:
+Another laptop, tablet, or phone on the same LAN can send a normal HTTP request.
+
+The flow is straightforward:
+
+1. device sends a prompt to the workstation IP
+2. FastAPI receives it
+3. FastAPI forwards the final request to Ollama
+4. Ollama returns the model output
+5. FastAPI returns the result to the device
+
+This can be as simple as a `curl` request, a tiny web UI, or a small mobile/desktop client.
+
+### 2.5 How retrieval / RAG can work
+
+The retrieval flow I use for experiments is intentionally simple:
 
 1. Split notes, docs, config files, or code into chunks.
 2. Create embeddings for those chunks.
@@ -132,7 +143,14 @@ The RAG path I experiment with is intentionally small:
 6. Build a grounded prompt from the retrieved context.
 7. Send that prompt to the local model through Ollama.
 
-### 2.5 Simple architecture diagram
+The important part is the separation:
+
+- embeddings turn text into searchable vectors
+- the vector DB stores and looks up those vectors
+- retrieval picks relevant chunks
+- the LLM writes the final answer using that retrieved context
+
+### 2.6 Simple architecture diagram
 
 ```text
 [Phone / Laptop / IDE]
@@ -151,9 +169,9 @@ The RAG path I experiment with is intentionally small:
              [Grounded Response]
 ```
 
-### 2.6 Example FastAPI + Ollama workflow
+### 2.7 Example FastAPI + Ollama workflow
 
-The shape is roughly:
+The shape is usually:
 
 1. A client sends `POST /ask` with a user question.
 2. FastAPI embeds the question and queries the vector store.
@@ -168,18 +186,18 @@ Very small version:
 client -> FastAPI -> retrieve relevant chunks -> build prompt -> Ollama -> response
 ```
 
-That is enough to test whether local retrieval actually improves answer quality before building anything fancier.
+That is enough to test whether retrieval actually improves answer quality without building a huge system first.
 
-### 2.7 Security considerations for LAN exposure
+### 2.8 Security considerations for local network exposure
 
-If I expose a local LLM server beyond localhost, I keep the security model simple and boring:
+If I expose the local model outside localhost, I keep the setup simple:
 
 - bind only to the local network, not the public internet
 - restrict firewall rules to trusted devices or the home subnet
 - put FastAPI or a reverse proxy in front if I want auth or rate limits
 - do not expose raw filesystem access through the model endpoint
 - be careful with retrieved data if the vector store contains private notes, tokens, or code
-- keep logs in mind because prompt history can become sensitive data very quickly
+- remember that logs can become sensitive very quickly if prompts include code or private notes
 
 For personal experiments, LAN-only plus a narrow firewall rule is usually enough.
 

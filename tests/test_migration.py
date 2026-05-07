@@ -205,11 +205,15 @@ def test_ide_module_keeps_vscode_mutable_and_syncs_all_ide_settings():
         "pytest",
         "ruff",
         "pythonToolchain",
-        'wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v6"',
+        'enableUpdateCheck = true;',
+        'enableExtensionUpdateCheck = true;',
+        'wanted="nil=${profileBin}/nil;nixfmt=${profileBin}/nixfmt;python=${profileBin}/python3;pytest=${profileBin}/pytest;theme=GitHub Dark Dimmed;pythonStack=v7;updates=auto"',
         '"workbench.colorTheme" == "GitHub Dark Dimmed"',
         '"window.commandCenter" == false',
         '"telemetry.telemetryLevel" == "off"',
-        '"update.mode" == "none"',
+        '"update.mode" == "start"',
+        '"extensions.autoCheckUpdates" == true',
+        '"extensions.autoUpdate" == true',
         '"python.languageServer" == $lang_server',
         '"python.analysis.typeCheckingMode" == "basic"',
         '"python.analysis.diagnosticMode" == "workspace"',
@@ -523,6 +527,7 @@ def test_hyprland_keymap_matches_requested_classic_binds():
     assert not_contains_literal(hyprland, "bind = Super, Super_R, exec, search-launcher")
     assert not_contains_literal(hyprland, "bindn = $mainMod, W, global, quickshell:searchToggleReleaseInterrupt")
     assert not_contains_literal(hyprland, "bindid = Super, Super_L, Toggle launcher, global, quickshell:searchToggleRelease")
+    assert not_contains_literal(hyprland, "ipc call search cancelTrigger")
     assert not_contains_literal(hyprland, "bind = SUPER, Tab, global, quickshell:overviewWorkspacesToggle")
     assert not_contains_literal(hyprland, "bindmt = SUPER SHIFT, mouse:272, movewindow")
 
@@ -781,43 +786,42 @@ def test_greetd_hyprland_and_i3_sessions_are_wired_together():
 def test_docs_match_the_current_end4_stack():
     readme = read_file("README.md")
     end4_settings = read_file("END4_SETTINGS.md")
-    hyprland_controls = read_file("HYPRLAND_CONTROLS.md")
+    workflow_doc = read_file("docs/X15_UNIFIED_WORKFLOW.md")
 
-    assert contains_literal(readme, "Compositor/Shell: `Hyprland 0.54` + Illogical Impulse / QuickShell")
-    assert contains_literal(readme, "git+https://git.outfoxxed.me/quickshell/quickshell")
-    assert contains_literal(readme, "Persistent end-4 defaults are merged into `~/.config/illogical-impulse/config.json`")
-    assert contains_literal(readme, "toggle the current dwindle split")
-    assert contains_literal(readme, "general.layout = dwindle")
-    assert contains_literal(readme, "Super+Tab")
-    assert contains_literal(readme, "Super+Shift+R")
-    assert contains_literal(readme, "Nemo")
-    assert contains_literal(readme, "Super+Ctrl")
-    assert contains_literal(readme, "Super+Alt")
-    assert contains_literal(readme, "tap/release Super")
-    assert contains_literal(readme, "3-finger horizontal swipe")
-    assert contains_literal(readme, "1920x1080@144")
-    assert contains_literal(readme, "hypr/hyprland/keybinds.conf")
-    assert contains_literal(readme, "custom/keybinds.conf")
-    assert contains_literal(readme, "global submap")
-    assert contains_literal(readme, "mimeapps.list")
-    assert contains_literal(readme, "Firefox is the default web handler")
-    assert contains_literal(readme, "Open WebUI disabled by default")
-    assert contains_literal(readme, "hosts/x15xs/default.nix")
-    assert contains_literal(readme, "users/asura/default.nix")
-    assert contains_literal(readme, "home/apps/mimeapps.nix")
-    assert contains_literal(readme, "home/desktop/end4/settings.nix")
-    assert contains_literal(readme, "VLC is installed declaratively")
-    assert contains_literal(readme, "battery-care target `90%`")
-    assert contains_literal(readme, "bar charge-limit button shown by default")
-    assert contains_literal(readme, "Python, Pylance, Black, isort, Ruff, Jupyter helpers, YAML, Docker")
-    assert contains_literal(readme, "latest `7` system generations")
-    assert contains_literal(readme, "weekly garbage collection")
-    assert contains_literal(readme, '`time.format = "hh:mm AP"`')
-    assert contains_literal(readme, '`time.pomodoro.focus = 2700` (`45m`)')
-    assert contains_literal(readme, 'Rishikesh, Uttarakhand, India 249204')
-    assert contains_literal(readme, '`background.parallax.enableWorkspace = false`')
-    assert contains_literal(readme, '`lock.useHyprlock = false`')
-    assert contains_literal(readme, "todo.json")
+    for literal in [
+        "Hyprland 0.54 (Wayland) + i3 (X11 fallback)",
+        "QuickShell",
+        "Super+Space` / `Super+D` | Launcher",
+        "3-finger horizontal swipe",
+        "Browser (Chrome)",
+        "File manager (Nemo)",
+        "Ollama local LLM server with Open WebUI",
+        "docs/X15_UNIFIED_WORKFLOW.md",
+        "modules/secure-boot/README.md",
+    ]:
+        assert contains_literal(readme, literal), f"Missing README literal: {literal}"
+
+    assert not_contains_literal(readme, "HYPRLAND_CONTROLS.md")
+    assert not_contains_literal(readme, "Super` (release) | Launcher")
+
+    for literal in [
+        "appearance.wallpaperTheming.enableAppsAndShell = true",
+        "appearance.wallpaperTheming.enableQtApps = false",
+        "lock.useHyprlock = false",
+        "bar.utilButtons.showChargeLimitToggle = true",
+        "sidebar.keepRightSidebarLoaded = false",
+    ]:
+        assert contains_literal(end4_settings, literal), f"Missing END4 settings literal: {literal}"
+
+    for literal in [
+        "# AI-Focused NixOS Workstation and Experimentation Workflow",
+        "Codex",
+        "Ollama",
+        "FastAPI",
+        "vibe coded, but validated properly",
+        "AI-Focused NixOS Workstation for Local LLM, Agent, and RAG Experimentation",
+    ]:
+        assert contains_literal(workflow_doc, literal), f"Missing workflow doc literal: {literal}"
     assert contains_literal(end4_settings, "background.parallax.enableSidebar = false")
     assert contains_literal(end4_settings, 'language.ui = "en_US"')
     assert contains_literal(end4_settings, 'time.format = "hh:mm AP"')
@@ -829,24 +833,13 @@ def test_docs_match_the_current_end4_stack():
     assert contains_literal(end4_settings, "Wallpapers below `1920x1080`")
     assert contains_literal(end4_settings, 'Rishikesh, Uttarakhand, India 249204')
     assert contains_literal(end4_settings, "todo.json")
-    assert contains_literal(hyprland_controls, "Super+Left/Right/Up/Down")
-    assert contains_literal(hyprland_controls, "Super+J")
-    assert contains_literal(hyprland_controls, "Super+Tab")
-    assert contains_literal(hyprland_controls, "Super+Shift+R")
-    assert contains_literal(hyprland_controls, "Super+Ctrl")
-    assert contains_literal(hyprland_controls, "Super+Alt")
-    assert contains_literal(hyprland_controls, "tap/release Super")
-    assert contains_literal(hyprland_controls, "lock with QuickShell")
-    assert contains_literal(hyprland_controls, "launch Firefox")
-    assert contains_literal(hyprland_controls, "home/desktop/hyprland.nix")
-    assert contains_literal(hyprland_controls, "hypr/hyprland/keybinds.conf")
-    assert contains_literal(hyprland_controls, "custom/keybinds.conf")
     assert not_contains_literal(readme, "Super+W")
-    assert not_contains_literal(hyprland_controls, "Super+W")
+    assert not_contains_literal(readme, "tap/release Super")
+    assert not_contains_literal(readme, "HYPRLAND_CONTROLS.md")
     assert not os.path.exists(nix_file_path("PLAN.md"))
     assert not os.path.exists(nix_file_path("KEYBINDINGS.md"))
     assert os.path.exists(nix_file_path("END4_SETTINGS.md"))
-    assert os.path.exists(nix_file_path("HYPRLAND_CONTROLS.md"))
+    assert os.path.exists(nix_file_path("docs/X15_UNIFIED_WORKFLOW.md"))
 
 
 @settings(max_examples=100)
