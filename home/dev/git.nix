@@ -1,14 +1,10 @@
 { config, lib, ... }:
 
 let
-  cfg = config.modules.git;
+  cfg = config.modules.dev.git;
 in
 {
-  options.modules.git = {
-    enable = lib.mkEnableOption "git config";
-  };
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (config.modules.dev.enable && cfg.enable) {
     programs.delta = {
       enable = true;
       enableGitIntegration = true;

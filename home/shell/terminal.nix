@@ -14,8 +14,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Upstream illogical-flake links its own foot/kitty directories. Keep the
-    # local terminal module as the only writer for those configs.
+    # Keep the local terminal module as the only writer for foot/kitty configs.
     xdg.configFile."foot".enable = lib.mkForce false;
     xdg.configFile."kitty".enable = lib.mkForce false;
 
@@ -60,28 +59,28 @@ in
         cursor = {
           style = "beam";
           blink = true;
-          color = "7dd3fc 101317";
+          color = "ff8f86 170d0f";
         };
         colors = {
-          alpha = "0.96";
-          foreground = "f0f3f5";
-          background = "101317";
-          regular0 = "0f1419";
-          regular1 = "f87171";
-          regular2 = "7bd88f";
-          regular3 = "f2b56b";
-          regular4 = "82aaff";
-          regular5 = "c792ea";
-          regular6 = "7dd3fc";
-          regular7 = "d6dde3";
-          bright0 = "4b5563";
-          bright1 = "ff8a8a";
-          bright2 = "9be8ab";
-          bright3 = "ffd18a";
-          bright4 = "a7c5ff";
-          bright5 = "ddb6f2";
-          bright6 = "a5e9ff";
-          bright7 = "ffffff";
+          alpha = "0.94";
+          foreground = "f7d8d1";
+          background = "170d0f";
+          regular0 = "140c0d";
+          regular1 = "f25f68";
+          regular2 = "d7c76f";
+          regular3 = "f2bf63";
+          regular4 = "d98f7a";
+          regular5 = "f09aa5";
+          regular6 = "ff8f86";
+          regular7 = "ead0ca";
+          bright0 = "514143";
+          bright1 = "ff747d";
+          bright2 = "e8d98a";
+          bright3 = "ffd17a";
+          bright4 = "f0a58e";
+          bright5 = "ffb0b8";
+          bright6 = "ffaaa1";
+          bright7 = "fff4ef";
         };
       };
     };
@@ -95,25 +94,25 @@ in
       settings = {
         shell = "${pkgs.zsh}/bin/zsh";
         term = "xterm-kitty";
-        background = "#101317";
-        foreground = "#f0f3f5";
-        cursor = "#7dd3fc";
-        cursor_text_color = "#101317";
-        selection_background = "#263340";
-        selection_foreground = "#ffffff";
-        url_color = "#f2b56b";
-        active_border_color = "#7dd3fc";
-        inactive_border_color = "#263340";
-        bell_border_color = "#f2b56b";
+        background = "#170d0f";
+        foreground = "#f7d8d1";
+        cursor = "#ff8f86";
+        cursor_text_color = "#170d0f";
+        selection_background = "#3a2024";
+        selection_foreground = "#fff4ef";
+        url_color = "#f2bf63";
+        active_border_color = "#ff8f86";
+        inactive_border_color = "#3a2024";
+        bell_border_color = "#f2bf63";
         tab_bar_style = "powerline";
         tab_bar_edge = "bottom";
         tab_bar_min_tabs = 1;
-        active_tab_background = "#7dd3fc";
-        active_tab_foreground = "#101317";
-        inactive_tab_background = "#1c232b";
-        inactive_tab_foreground = "#c5d0d8";
-        window_padding_width = 12;
-        background_opacity = "0.96";
+        active_tab_background = "#ff8f86";
+        active_tab_foreground = "#170d0f";
+        inactive_tab_background = "#281719";
+        inactive_tab_foreground = "#d8b8b2";
+        window_padding_width = 10;
+        background_opacity = "0.94";
         dynamic_background_opacity = true;
         enable_audio_bell = false;
         cursor_shape = "beam";
@@ -122,22 +121,22 @@ in
         repaint_delay = 10;
         input_delay = 2;
         sync_to_monitor = true;
-        color0 = "#0f1419";
-        color1 = "#f87171";
-        color2 = "#7bd88f";
-        color3 = "#f2b56b";
-        color4 = "#82aaff";
-        color5 = "#c792ea";
-        color6 = "#7dd3fc";
-        color7 = "#d6dde3";
-        color8 = "#4b5563";
-        color9 = "#ff8a8a";
-        color10 = "#9be8ab";
-        color11 = "#ffd18a";
-        color12 = "#a7c5ff";
-        color13 = "#ddb6f2";
-        color14 = "#a5e9ff";
-        color15 = "#ffffff";
+        color0 = "#140c0d";
+        color1 = "#f25f68";
+        color2 = "#d7c76f";
+        color3 = "#f2bf63";
+        color4 = "#d98f7a";
+        color5 = "#f09aa5";
+        color6 = "#ff8f86";
+        color7 = "#ead0ca";
+        color8 = "#514143";
+        color9 = "#ff747d";
+        color10 = "#e8d98a";
+        color11 = "#ffd17a";
+        color12 = "#f0a58e";
+        color13 = "#ffb0b8";
+        color14 = "#ffaaa1";
+        color15 = "#fff4ef";
       };
       extraConfig = ''
         cursor_trail 1

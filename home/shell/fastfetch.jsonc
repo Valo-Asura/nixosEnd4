@@ -6,10 +6,10 @@
       "type": "both"
     },
     "color": {
-      "keys": "light_cyan",
-      "title": "cyan",
+      "keys": "light_red",
+      "title": "light_yellow",
       "output": "white",
-      "separator": "bright_black"
+      "separator": "light_red"
     }
   },
   "modules": [
@@ -17,7 +17,7 @@
     "break",
     {
       "type": "custom",
-      "format": "[ Hardware ]"
+      "format": "• ── Hardware Information ── •"
     },
     {
       "type": "host",
@@ -48,7 +48,7 @@
     "break",
     {
       "type": "custom",
-      "format": "[ Session ]"
+      "format": "• ── Software Information ── •"
     },
     {
       "type": "os",

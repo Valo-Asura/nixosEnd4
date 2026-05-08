@@ -29,17 +29,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    illogical-flake = {
-      url = "github:soymou/illogical-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.quickshell.follows = "quickshell";
-    };
-
-    ilyamiro-nixos-configuration = {
-      url = "github:ilyamiro/nixos-configuration";
-      flake = false;
-    };
-
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -100,9 +89,6 @@
                 extraSpecialArgs = {
                   inherit inputs hostname;
                 };
-                sharedModules = [
-                  ./home/desktop/end4/module.nix
-                ];
                 users.asura = import ./users/asura;
               };
             }

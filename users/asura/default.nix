@@ -16,9 +16,7 @@
     ../../home/apps/yazi.nix
 
     # Development workflow.
-    ../../home/dev/git.nix
-    ../../home/dev/ide.nix
-    ../../home/dev/nanobot.nix
+    ../../home/dev
 
     # Desktop/session behavior.
     ../../home/desktop/hyprland.nix
@@ -37,14 +35,19 @@
     packages.enable = true;
     browser.enable = true;
     media.enable = true;
-    ide.enable = true;
     mimeapps.enable = true;
-    git.enable = true;
     yazi.enable = true;
-    nanobot.enable = true;
     shell.enable = true;
     terminal.enable = true;
     hyprland.enable = true;
+
+    dev = {
+      enable = true;
+      git.enable = true;
+      python.enable = true;
+      ides.enable = true;
+      ai.enable = true;
+    };
 
     quickshell = {
       enable = true;
@@ -58,17 +61,8 @@
     };
   };
 
-  programs.illogical-impulse = {
-    enable = true;
-    dotfiles = {
-      fish.enable = false; # using local zsh/kitty stack instead
-      kitty.enable = false; # use the local kitty config and launch zsh
-      starship.enable = true;
-    };
-  };
-
   # Keep Stylix at the system level only; shell/theme ownership lives with
-  # Illogical Impulse + matugen in Home Manager.
+  # the local QuickShell + matugen profile in Home Manager.
   stylix.enable = false;
 
   home.pointerCursor = {
@@ -108,8 +102,6 @@
     XCURSOR_SIZE = "24";
     GTK_THEME = "adw-gtk3-dark";
     GIO_EXTRA_MODULES = "${pkgs.gvfs}/lib/gio/modules:${pkgs.glib-networking}/lib/gio/modules";
-    # illogical-flake has a conflict between common.nix ("") and qt.nix ("kvantum");
-    # force the intended value here to resolve the evaluation error.
     QT_STYLE_OVERRIDE = lib.mkForce "kvantum";
     QSG_RENDER_LOOP = "basic";
   };
@@ -120,9 +112,6 @@
     ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark || true
   '';
 
-  # Restore the upstream Kvantum theme dir now that Home Manager Stylix
-  # is no longer managing Qt theming.
-  xdg.configFile."Kvantum".enable = lib.mkForce true;
   # i3 config: ~/.config/i3/ directory exists but is empty, causing i3 to ask
   # "create new config or use defaults". Provide the file so i3 finds it first.
   xdg.configFile."i3/config".source = ../../home/desktop/i3/config;

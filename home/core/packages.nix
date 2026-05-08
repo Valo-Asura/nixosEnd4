@@ -22,19 +22,10 @@ in
       ripgrep
       zoxide
       direnv
-      nil
-      nixfmt
-      uv
       fzf
       bottom
-      lazygit
-      delta
       jq
       curl
-
-      # Nix and AI tooling.
-      ollama
-      (pkgs."claude-code")
 
       # Desktop helpers.
       networkmanager

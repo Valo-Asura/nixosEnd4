@@ -193,25 +193,25 @@ phase_kernel_optimization() {
     # The configuration is handled by the NixOS module
     # This phase validates the configuration can be applied
     
-    if [ -f "$NIXOS_DIR/modules/performance.nix" ] && [ -f "$NIXOS_DIR/modules/performance-enhanced.nix" ]; then
-        info "Performance modules found"
-        checkpoint "Performance modules present"
+    if [ -f "$NIXOS_DIR/modules/performance/default.nix" ]; then
+        info "Performance module found"
+        checkpoint "Performance module present"
     else
         warn "Performance modules not found"
         return 1
     fi
 
-    if grep -q "linuxPackages_7_0" "$NIXOS_DIR/modules/boot.nix"; then
-        checkpoint "Kernel 7.x package path configured"
+    if grep -q "linuxPackages_latest" "$NIXOS_DIR/modules/core/boot.nix"; then
+        checkpoint "Latest kernel package path configured"
     else
-        warn "Kernel 7.x package path not found in boot module"
+        warn "Latest kernel package path not found in boot module"
     fi
     
     # Validate kernel parameters
     info "Validating kernel configuration..."
     local required_params=("preempt=full" "threadirqs" "skew_tick=1")
     for param in "${required_params[@]}"; do
-        if grep -q "$param" "$NIXOS_DIR/modules/performance.nix"; then
+        if grep -q "$param" "$NIXOS_DIR/modules/performance/default.nix"; then
             checkpoint "Kernel param: $param"
         else
             warn "Kernel param not found: $param"
@@ -267,15 +267,16 @@ phase_quickshell_integration() {
     
     step "Validating Quickshell configuration..."
     
-    if [ -f "$NIXOS_DIR/home/desktop/end4/overrides/ResourceService.qml" ]; then
+    if [ -f "$NIXOS_DIR/home/desktop/quickshell/profiles/end4/ii/services/ResourceService.qml" ]; then
         info "ResourceService override present"
         checkpoint "ResourceService present"
     else
         warn "ResourceService override missing"
     fi
     
-    if [ -f "$NIXOS_DIR/home/desktop/end4/overrides/Resources.qml" ] && [ -f "$NIXOS_DIR/home/desktop/end4/overrides/ResourcesPopup.qml" ]; then
-        info "Resources bar overrides present"
+    if [ -f "$NIXOS_DIR/home/desktop/quickshell/profiles/end4/ii/modules/ii/bar/Resources.qml" ] && \
+       [ -f "$NIXOS_DIR/home/desktop/quickshell/profiles/end4/ii/modules/ii/bar/ResourcesPopup.qml" ]; then
+        info "Resources bar files present"
         checkpoint "Resources overrides present"
     else
         warn "Resources bar overrides missing"
@@ -311,7 +312,7 @@ phase_display_sessions() {
         warn "greetd session chooser flags missing"
     fi
 
-    if [ -f "$NIXOS_DIR/modules/i3-session.nix" ] && [ -f "$NIXOS_DIR/home/desktop/i3/config" ]; then
+    if [ -f "$NIXOS_DIR/modules/desktop/i3-session.nix" ] && [ -f "$NIXOS_DIR/home/desktop/i3/config" ]; then
         info "i3 fallback session files present"
         checkpoint "i3 session present"
     else

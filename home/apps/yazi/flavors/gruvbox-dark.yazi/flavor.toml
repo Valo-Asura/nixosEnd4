@@ -1,0 +1,229 @@
+"$schema" = "https://yazi-rs.github.io/schemas/theme.json"
+# vim:fileencoding=utf-8:foldmethod=marker
+
+# : Manager {{{
+
+[mgr]
+cwd = { fg = "lightblue" }
+
+# Find
+find_keyword  = { fg = "#3c3836", bg = "lightyellow", bold = true, italic = false, underline = true }
+find_position = { fg = "#3c3836", bg = "#fe8019", bold = true, italic = false }
+
+# Symlink
+symlink_target = { italic = true }
+
+# Marker
+marker_copied   = { fg = "lightgreen",  bg = "lightgreen" }
+marker_cut      = { fg = "lightred",    bg = "lightred" }
+marker_marked   = { fg = "lightcyan",   bg = "lightcyan" }
+marker_selected = { fg = "lightyellow", bg = "lightyellow" }
+
+
+# Count
+count_copied   = { fg = "#282828", bg = "lightgreen", bold = true }
+count_cut      = { fg = "#282828", bg = "lightred", bold = true }
+count_selected = { fg = "#282828", bg = "lightyellow", bold = true }
+
+# Border
+border_symbol = "│"
+border_style  = { fg = "#665c54" }
+
+# Highlighting
+syntect_theme = ""
+
+# : }}}
+
+# : Indicator of hovered file {{{
+
+[indicator]
+parent  = { reversed = true }
+current = { fg = "#282828", bg = "lightblue" }
+preview = { underline = true }
+padding = { open = "█", close= "█" }
+
+# : }}}
+
+# : Tabs {{{
+
+[tabs]
+active   = { fg = "#3c3836", bg = "#a89984" }
+inactive = { fg = "#a89984", bg = "#3c3836" }
+
+# Separator
+sep_inner = { open = "█", close = "█" }
+sep_outer = { open = "█", close = "█" }
+
+# : }}}
+
+# : Mode {{{
+
+[mode]
+
+normal_main = { fg = "#282828", bg = "#A89984", bold = true }
+normal_alt  = { fg = "#bdae93", bg = "#504945" }
+
+# Select mode
+select_main = { fg = "#282828", bg = "lightyellow", bold = true }
+select_alt  = { fg = "#bdae93", bg = "#504945" }
+
+# Unset mode
+unset_main = { fg = "#282828", bg = "lightmagenta", bold = true }
+unset_alt  = { fg = "#bdae93", bg = "#504945" }
+
+# : }}}
+
+# : Status bar {{{
+
+[status]
+overall   = {}
+sep_left  = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+
+# Permissions
+perm_sep = { fg = "#665c54" }
+perm_type = { fg = "lightblue" }
+perm_read = { fg = "lightyellow" }
+perm_write = { fg = "lightred" }
+perm_exec = { fg = "lightgreen" }
+
+# Progress
+progress_label  = { fg = "#ebdbb2", bold = true }
+progress_normal = { fg = "#504945", bg = "#3c3836" }
+progress_error  = { fg = "lightred", bg = "#3c3836" }
+
+# : }}}
+
+# : Pick {{{
+
+[pick]
+border   = { fg = "blue" }
+active   = { fg = "magenta", bold = true }
+inactive = {}
+
+# : }}}
+
+# : Input {{{
+
+[input]
+border   = { fg = "#bdae93" }
+title    = {}
+value    = {}
+selected = { reversed = true }
+
+# : }}}
+
+# : Confirmation {{{
+
+[confirm]
+border     = { fg = "lightblue" }
+title      = { fg = "lightblue" }
+body       = {}
+list       = {}
+btn_yes    = { reversed = true }
+btn_no     = {}
+btn_labels = [ "  [Y]es  ", "  (N)o  " ]
+
+# : }}}
+
+# : Completion {{{
+
+[cmp]
+border   = { fg = "lightblue" }
+active   = { reversed = true }
+inactive = {}
+
+# Icons
+icon_file    = ""
+icon_folder  = ""
+icon_command = ""
+
+# : }}}
+
+# : Task manager {{{
+
+[tasks]
+border  = { fg = "#504945" }
+title   = {}
+hovered = { fg = "magenta", bold = true }
+
+# : }}}
+
+# : Which {{{
+
+[which]
+cols            = 3
+mask            = { bg = "#3c3836" }
+cand            = { fg = "lightblue" }
+rest            = { fg = "#928374" }
+desc            = { fg = "#fe8019" }
+separator       = "  "
+separator_style = { fg = "#504945" }
+
+
+# : }}}
+
+# : Help menu {{{
+
+[help]
+on      = { fg = "#fe8019" }
+run     = { fg = "lightblue" }
+desc    = { fg = "#928374" }
+hovered = { bg = "#504945", bold = true }
+footer  = { fg = "#3c3836", bg = "#a89984" }
+
+# : }}}
+
+# : Notify {{{
+
+[notify]
+title_info  = { fg = "green" }
+title_warn  = { fg = "yellow" }
+title_error = { fg = "red" }
+
+# Icons
+icon_info  = ""
+icon_warn  = ""
+icon_error = ""
+
+# : }}}
+
+# : File-specific styles {{{
+
+[filetype]
+rules = [
+	# Image
+	{ mime = "image/*", fg = "lightmagenta" },
+	# Media
+	{ mime = "{audio,video}/*", fg = "lightgreen" },
+	# Archive
+	{ mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#fe8019" },
+	# Document
+	{ mime = "application/{pdf,doc,rtf}", fg = "lightcyan" },
+	# Virtual file system
+	{ mime = "vfs/{absent,stale}", fg = "gray" },
+	# Special file
+	{ url = "*", is = "orphan", bg = "lightred" },
+	{ url = "*", is = "exec"  , fg = "lightgreen" },
+	# Dummy file
+	{ url = "*", is = "dummy", bg = "lightred" },
+	{ url = "*/", is = "dummy", bg = "lightred" },
+  # Empty files
+  { mime = "inode/empty", fg = "lightred" },
+	# Fallback
+	{ url = "*/", fg = "lightblue" }
+]
+
+# : }}}
+
+# : Spotter {{{
+
+[spot]
+border = { fg = "lightblue" }
+title  = { fg = "lightblue" }
+
+# Table
+tbl_col  = { fg = "lightblue" }
+tbl_cell = { fg = "lightyellow", reversed = true }
+
+# : }}}

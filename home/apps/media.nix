@@ -18,6 +18,7 @@ in
       # Camera and microphone checks.
       snapshot
       cameractrls
+      v4l-utils
       pwvucontrol
       crosspipe
       alsa-utils

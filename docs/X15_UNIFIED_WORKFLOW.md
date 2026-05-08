@@ -13,7 +13,16 @@ The system is built around:
 - i3 as an X11 fallback session
 - Ollama for local LLM experiments
 - AI coding agents and AI IDEs for real config/debugging tasks
-- a modular Nix layout so system behavior is easier to change without turning the repo into one huge file
+- a self-contained modular Nix layout under `/etc/nixos`
+
+Current structure rules:
+
+- UI configuration lives in this repo, including the vendored End4 and ilyamiro QuickShell profiles under `home/desktop/quickshell/profiles`.
+- Package flakes remain pinned for build inputs, but the desktop no longer imports external UI configuration flakes or a Downloads checkout.
+- Hardware-specific policy for the Colorful X15 XS lives under `modules/hardware/x15xs`.
+- The active performance default is `modules.performance.profile = "balanced-fast"`; risky benchmark-only knobs stay out of the default path.
+- Developer tooling is grouped under `home/dev` with `modules.dev.*` options and no activation-time `pip install` or IDE extension installation.
+- Secure Boot notes live here; the module remains guarded because this host currently boots with Limine and dual-boots Windows from another NVMe.
 
 The main engineering work was not “setting up Linux” in a generic way. It was debugging workflow friction:
 

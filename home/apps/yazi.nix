@@ -1,14 +1,12 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.modules.yazi;
-
-  gruvboxDarkFlavor = pkgs.fetchFromGitHub {
-    owner = "gmvar";
-    repo = "gruvbox-dark.yazi";
-    rev = "8f520a458e0c1a1ee7c8d14876233eb16a22d0f3";
-    hash = "sha256-18b+5t0dZVUrS2JWfILR+wWVAcWg+UzJ4dWb5Xj9B+E=";
-  };
 in
 {
   options.modules.yazi = {
@@ -22,7 +20,7 @@ in
       shellWrapperName = "y";
 
       flavors = {
-        gruvbox-dark = gruvboxDarkFlavor;
+        gruvbox-dark = ./yazi/flavors/gruvbox-dark.yazi;
       };
 
       theme = {

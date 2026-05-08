@@ -72,27 +72,20 @@ let
 in
 {
   imports = [
-    ../../hardware-configuration.nix
     ../../modules/default.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
 
   modules = {
+    hardware.x15xs.enable = true;
+
     boot.enable = true;
 
     performance = {
       enable = true;
-      profile = "balanced";
-      nbfcProfile = "Colorful X15 AT 22";
-    };
-
-    performanceEnhanced = {
-      enable = true;
-      profile = "balanced"; # Options: max | balanced | cool
-      nbfcProfile = "Colorful X15 AT 22";
-      disableIPv6 = false;
-      debugMode = false;
+      profile = "balanced-fast";
+      nbfcProfile = config.modules.hardware.x15xs.nbfcProfile;
     };
 
     hardwareMonitor = {
@@ -104,6 +97,13 @@ in
         gpuTemp = 83;
         fanStop = true;
       };
+    };
+
+    batteryCare = {
+      enable = true;
+      user = "asura";
+      stopThreshold = 90;
+      defaultEnabled = true;
     };
 
     i3Session.enable = true;
@@ -118,8 +118,8 @@ in
 
     nvidia = {
       enable = true;
-      intelBusId = "PCI:0:2:0";
-      nvidiaBusId = "PCI:1:0:0";
+      intelBusId = config.modules.hardware.x15xs.graphics.intelBusId;
+      nvidiaBusId = config.modules.hardware.x15xs.graphics.nvidiaBusId;
     };
 
     portal.enable = true;
@@ -141,8 +141,15 @@ in
   };
 
   networking.hostName = lib.mkDefault hostname;
-  networking.networkmanager.enable = true;
-  networking.networkmanager.dns = "systemd-resolved";
+  networking.networkmanager = {
+    enable = true;
+    dns = "systemd-resolved";
+    plugins = with pkgs; [
+      networkmanager-openconnect
+      networkmanager-openvpn
+      networkmanager-vpnc
+    ];
+  };
   services.resolved.enable = true;
   systemd.services.systemd-rfkill.enable = lib.mkForce true;
   systemd.sockets.systemd-rfkill.enable = lib.mkForce true;
@@ -213,11 +220,15 @@ in
       inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
   };
 
-  # Required by illogical-flake (QtPositioning / geolocation)
+  # Required by the local QuickShell weather/geolocation widgets.
   services.geoclue2.enable = true;
 
   fonts.packages = with pkgs; [
+    material-icons
+    material-symbols
     rubik
+    nerd-fonts.iosevka
+    nerd-fonts.symbols-only
     nerd-fonts.ubuntu
     nerd-fonts.jetbrains-mono
   ];
@@ -265,7 +276,7 @@ in
     pciutils
     wsdd
     startHyprland
-    xinit  # provides startx, required by tuigreet for xsession launching
+    xinit # provides startx, required by tuigreet for xsession launching
   ];
 
   nix.settings = {

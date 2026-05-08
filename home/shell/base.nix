@@ -10,7 +10,7 @@ let
   ffetchTheme = pkgs.writeShellScriptBin "ffetch-theme" ''
     set -euo pipefail
 
-    img_dir="$HOME/Pictures/fastfetch"
+    img_dir="$HOME/Pictures/kitty"
     pinned="$HOME/.config/fastfetch/current-image"
     img=""
     cfg="$HOME/.config/fastfetch/config.jsonc"
@@ -19,9 +19,13 @@ let
 
     if [ -f "$pinned" ]; then
       candidate="$(${pkgs.coreutils}/bin/cat "$pinned" 2>/dev/null || true)"
-      if [ -n "$candidate" ] && [ -f "$candidate" ]; then
-        img="$candidate"
-      fi
+      case "$candidate" in
+        "$img_dir"/*)
+          if [ -f "$candidate" ]; then
+            img="$candidate"
+          fi
+          ;;
+      esac
     fi
 
     if [ -z "$img" ] && [ -d "$img_dir" ]; then
@@ -39,8 +43,8 @@ let
 
       run_fastfetch_with_logo() {
         ${pkgs.fastfetch}/bin/fastfetch --config "$cfg" "$@" \
-          --logo-width 30 \
-          --logo-height 16 \
+          --logo-width 34 \
+          --logo-height 18 \
           --logo-preserve-aspect-ratio true
       }
 

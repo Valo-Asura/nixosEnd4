@@ -72,16 +72,12 @@ nix flake update
 /etc/nixos/
 ├── flake.nix                    # Flake entry point
 ├── hosts/x15xs/                 # Host-specific configuration
-├── modules/                     # System modules (15+)
-│   ├── boot.nix
-│   ├── nvidia.nix
-│   ├── performance.nix
-│   ├── performance-enhanced.nix
-│   ├── hardware-monitor.nix
-│   ├── battery-care.nix
-│   ├── ollama.nix
-│   ├── i3-session.nix
-│   ├── system-cleanup.nix
+├── modules/                     # Grouped system modules
+│   ├── core/                    # boot and maintenance
+│   ├── hardware/x15xs/          # generated hardware, NVIDIA, sensors, NBFC
+│   ├── performance/             # profile-based performance tuning
+│   ├── desktop/                 # portals and i3 fallback
+│   ├── services/                # Ollama/Open WebUI
 │   └── secure-boot/             # Secure Boot support
 ├── home/                        # User configuration
 │   ├── desktop/                 # Hyprland, i3, QuickShell, End-4
@@ -98,8 +94,6 @@ nix flake update
 - `home-manager` - User environment management
 - `hyprland` - v0.54.0 compositor
 - `quickshell` - End-4 shell
-- `illogical-flake` - End-4 dotfiles
-- `ilyamiro-nixos-configuration` - ilyamiro QuickShell profile only
 - `zen-browser` - Privacy-focused browser
 - `matugen` - Color scheme generator
 - `stylix` - System-wide theming
@@ -130,20 +124,19 @@ Same keybindings as Hyprland, except:
 ## Modules
 
 ### Core System
-- **boot.nix** - Limine bootloader and latest packaged kernel selection
-- **nvidia.nix** - Hybrid graphics, Prime Offload, power management
-- **performance.nix** - Base performance tuning (3 profiles: max/balanced/cool)
-- **performance-enhanced.nix** - CachyOS kernel optimizations
-- **portal.nix** - XDG desktop portal configuration
+- **modules/core/boot.nix** - Limine bootloader and latest packaged kernel selection
+- **modules/hardware/x15xs/nvidia.nix** - Hybrid graphics, Prime Offload, power management
+- **modules/performance/default.nix** - Profile-based tuning (`balanced-fast`, `max`, `cool`)
+- **modules/desktop/portal.nix** - XDG desktop portal configuration
 
 ### Hardware Management
-- **hardware-monitor.nix** - Real-time thermal/fan monitoring with alerts
-- **battery-care.nix** - Battery charge limiting for longevity
+- **modules/hardware/x15xs/hardware-monitor.nix** - Real-time thermal/fan monitoring with alerts
+- **modules/hardware/x15xs/battery-care.nix** - Battery charge limiting for longevity
 
 ### Applications
-- **ollama.nix** - Local LLM server with GPU acceleration
-- **i3-session.nix** - X11 fallback session
-- **system-cleanup.nix** - Automated maintenance (GC, optimization)
+- **modules/services/ollama.nix** - Local LLM server with GPU acceleration
+- **modules/desktop/i3-session.nix** - X11 fallback session
+- **modules/core/maintenance.nix** - Automated maintenance (GC, optimization)
 - **home/apps/media.nix** - Camera, microphone, PipeWire graph, and playback tools
 - **home/shell/terminal.nix** - Kitty and Foot theme ownership
 
@@ -152,7 +145,7 @@ Same keybindings as Hyprland, except:
 
 ## QuickShell Profiles
 
-End-4 stays the default profile. The ilyamiro repository is pinned as a flake input and only its `config/sessions/hyprland/scripts` QuickShell tree is copied into `~/.config/hypr/scripts`; its NixOS and Hyprland system config are not imported.
+End4 stays the default profile. Both End4 and ilyamiro QuickShell assets are vendored inside `/etc/nixos/home/desktop/quickshell/profiles`, so the desktop no longer depends on an external UI Git repo or a Downloads checkout.
 
 ```bash
 # Show active profile
@@ -218,20 +211,20 @@ sudo sbctl enroll-keys --microsoft
 ### 6. Enable in BIOS
 Reboot and enable Secure Boot in UEFI settings.
 
-See [modules/secure-boot/README.md](./modules/secure-boot/README.md) for detailed instructions.
+Secure Boot remains disabled by default because this host currently boots through Limine and dual-boots Windows from another NVMe. The guarded module stays under `modules/secure-boot`.
 
 ## Performance Profiles
 
 Switch between performance modes in `hosts/x15xs/default.nix`:
 
 ```nix
-modules.performance.profile = "balanced";  # max | balanced | cool
+modules.performance.profile = "balanced-fast";  # balanced-fast | max | cool
 ```
 
 | Profile | CPU Governor | Fan Speed | Battery Life |
 |---------|--------------|-----------|--------------|
 | max | performance | High | ~3h |
-| balanced | schedutil | Auto | ~5.8h |
+| balanced-fast | performance + HWP balance | Auto | ~5.8h |
 | cool | powersave | Low | ~7h |
 
 ## Maintenance
@@ -325,8 +318,6 @@ sudo rm /var/cache/tuigreet/lastsession-*
 
 ### Desktop Environment & Shell
 - **[end-4/illogical-impulse](https://github.com/end-4/illogical-impulse)** - Beautiful, feature-rich shell and UX design
-- **[soymou/illogical-flake](https://github.com/soymou/illogical-flake)** - Nix flake wrapper for End-4's dotfiles
-- **[ilyamiro/nixos-configuration](https://github.com/ilyamiro/nixos-configuration)** - Optional QuickShell profile source
 - **[QuickShell](https://git.outfoxxed.me/quickshell/quickshell)** - Qt-based shell framework powering End-4
   - [QuickShell Documentation](https://quickshell.outfoxxed.me/)
   - [QuickShell GitHub Mirror](https://github.com/outfoxxed/quickshell)

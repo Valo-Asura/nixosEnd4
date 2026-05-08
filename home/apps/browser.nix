@@ -164,6 +164,7 @@ in
         name = "asura";
         search = {
           default = "ddg";
+          force = true;
         };
         settings = {
           "app.shield.optoutstudies.enabled" = false;

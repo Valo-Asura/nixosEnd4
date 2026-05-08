@@ -8,7 +8,145 @@
 
 let
   cfg = config.modules.hyprland;
-  upstreamDotfiles = inputs.illogical-flake.inputs.dotfiles;
+  quickshellActiveProfile = config.modules.quickshell.activeProfile or "end4";
+  hyprctl = "${inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland}/bin/hyprctl";
+
+  quickshellSessionBoot = pkgs.writeShellScriptBin "quickshell-session-boot" ''
+    set -euo pipefail
+
+    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/current-system/sw/bin:$PATH"
+    state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
+    mkdir -p "$state_dir"
+    exec >> "$state_dir/boot.log" 2>&1
+    printf '[%s] quickshell-session-boot starting\n' "$(${pkgs.coreutils}/bin/date --iso-8601=seconds)"
+
+    profile="${quickshellActiveProfile}"
+    profile_state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
+    mkdir -p "$profile_state_dir"
+    printf '%s\n' "$profile" > "$profile_state_dir/profile"
+
+    ${pkgs.procps}/bin/pkill -x qs 2>/dev/null || true
+    ${pkgs.procps}/bin/pkill -x quickshell 2>/dev/null || true
+    ${pkgs.procps}/bin/pkill -f "$HOME/.config/quickshell/ii" 2>/dev/null || true
+    ${pkgs.procps}/bin/pkill -f "$HOME/.config/hypr/scripts/quickshell" 2>/dev/null || true
+
+    ${resolveQsRuntime}
+
+    case "$profile" in
+      end4)
+        exec "$qs_bin" -c ii
+        ;;
+      ilyamiro)
+        qs_dir="$HOME/.config/hypr/scripts/quickshell"
+        if [ ! -f "$qs_dir/Main.qml" ] || [ ! -f "$qs_dir/TopBar.qml" ]; then
+          echo "ilyamiro profile is not installed" >&2
+          exit 1
+        fi
+
+        "$qs_bin" -p "$qs_dir/Main.qml" >/dev/null 2>&1 &
+        "$qs_bin" -p "$qs_dir/TopBar.qml" >/dev/null 2>&1 &
+        ;;
+      *)
+        echo "unknown quickshell profile: $profile" >&2
+        exit 2
+        ;;
+    esac
+  '';
+
+  quickshellServiceStart = pkgs.writeShellScriptBin "quickshell-service-start" ''
+    set -u
+
+    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/current-system/sw/bin:$PATH"
+    state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
+    mkdir -p "$state_dir"
+    exec >> "$state_dir/boot.log" 2>&1
+    printf '[%s] quickshell-service-start starting\n' "$(${pkgs.coreutils}/bin/date --iso-8601=seconds)"
+
+    ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd \
+      WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE XDG_SESSION_TYPE DISPLAY DBUS_SESSION_BUS_ADDRESS \
+      >/dev/null 2>&1 || true
+
+    ${pkgs.systemd}/bin/systemctl --user import-environment \
+      WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE XDG_SESSION_TYPE DISPLAY DBUS_SESSION_BUS_ADDRESS \
+      >/dev/null 2>&1 || true
+
+    quickshell-profile set "${quickshellActiveProfile}" >/dev/null 2>&1 || true
+
+    if ${pkgs.systemd}/bin/systemctl --user restart x15-quickshell.service >/dev/null 2>&1; then
+      printf '[%s] x15-quickshell.service restarted\n' "$(${pkgs.coreutils}/bin/date --iso-8601=seconds)"
+      exit 0
+    fi
+
+    printf '[%s] x15-quickshell.service unavailable; falling back to direct boot\n' "$(${pkgs.coreutils}/bin/date --iso-8601=seconds)"
+    exec ${quickshellSessionBoot}/bin/quickshell-session-boot
+  '';
+
+  quickshellSuperInterrupt = pkgs.writeShellScriptBin "quickshell-super-interrupt" ''
+    set +e
+
+    ${hyprctl} dispatch global quickshell:searchToggleReleaseInterrupt >/dev/null 2>&1
+
+    qs_bin=""
+    for candidate in \
+      "/etc/profiles/per-user/''${USER:-asura}/bin/qs" \
+      "$HOME/.local/state/nix/profiles/home-manager/home-path/bin/qs" \
+      "$HOME/.nix-profile/bin/qs" \
+      qs; do
+      if [ -x "$candidate" ]; then
+        qs_bin="$candidate"
+        break
+      fi
+
+      resolved="$(command -v "$candidate" 2>/dev/null || true)"
+      if [ -n "$resolved" ]; then
+        qs_bin="$resolved"
+        break
+      fi
+    done
+
+    if [ -n "$qs_bin" ]; then
+      "$qs_bin" -c ii ipc call search toggleReleaseInterrupt >/dev/null 2>&1
+      "$qs_bin" -c ii ipc call overview toggleReleaseInterrupt >/dev/null 2>&1
+    fi
+
+    exit 0
+  '';
+
+  resolveQsRuntime = ''
+    qs_bin=""
+    for candidate in \
+      "/etc/profiles/per-user/''${USER:-asura}/bin/qs" \
+      "$HOME/.local/state/nix/profiles/home-manager/home-path/bin/qs" \
+      "$HOME/.nix-profile/bin/qs" \
+      qs; do
+      if [ -x "$candidate" ]; then
+        qs_bin="$candidate"
+        break
+      fi
+
+      resolved="$(command -v "$candidate" 2>/dev/null || true)"
+      if [ -n "$resolved" ]; then
+        qs_bin="$resolved"
+        break
+      fi
+    done
+
+    if [ -z "$qs_bin" ]; then
+      echo "qs was not found in the user profile" >&2
+      exit 127
+    fi
+  '';
+
+  superDispatch = pkgs.writeShellScriptBin "super-dispatch" ''
+    ${quickshellSuperInterrupt}/bin/quickshell-super-interrupt
+    exec ${hyprctl} dispatch "$@"
+  '';
+
+  superRun = pkgs.writeShellScriptBin "super-run" ''
+    ${quickshellSuperInterrupt}/bin/quickshell-super-interrupt
+    exec "$@"
+  '';
+
   hyprPatchedGeneral =
     builtins.replaceStrings
       [
@@ -27,7 +165,17 @@ let
         "# gesture_distance = 300  # Removed: obsolete hyprexpo option"
         "# gesture_positive = false  # Removed: obsolete hyprexpo option"
       ]
-      (builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/general.conf");
+      (builtins.readFile ./hypr/assets/hyprland/general.conf);
+
+  hyprExecsSource = lib.concatStringsSep "\n" (
+    map (
+      line:
+      if (lib.hasInfix "wl-paste --type" line && lib.hasInfix "cliphist" line) then
+        "# Clipboard history is managed by Home Manager user services."
+      else
+        line
+    ) (lib.splitString "\n" (builtins.readFile ./hypr/assets/hyprland/execs.conf))
+  );
 
   hyprPatchedExecs =
     builtins.replaceStrings
@@ -35,23 +183,25 @@ let
         "exec-once = easyeffects --hide-window --service-mode"
         "exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh"
         "exec-once = qs -c $qsConfig &"
+        "exec-once = quickshell-session start &"
+        "exec-once = quickshell-session boot &"
         "qs -c $qsConfig ipc call cliphistService update"
         "exec-once = gnome-keyring-daemon --start --components=secrets"
       ]
       [
         "# exec-once = easyeffects --hide-window --service-mode  # Disabled for idle RSS/process targets"
         "# exec-once = ~/.config/hypr/custom/scripts/__restore_video_wallpaper.sh  # Disabled for faster static-wallpaper startup"
-        "exec-once = quickshell-session start &"
+        "exec-once = ${quickshellServiceStart}/bin/quickshell-service-start &"
+        "exec-once = ${quickshellServiceStart}/bin/quickshell-service-start &"
+        "exec-once = ${quickshellServiceStart}/bin/quickshell-service-start &"
         "# Clipboard history is managed by Home Manager user services"
         "# exec-once = gnome-keyring-daemon --start --components=secrets  # Managed by PAM + system keyring service"
       ]
-      (builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/execs.conf");
+      hyprExecsSource;
 
   hyprPatchedRules =
     let
-      rules = lib.splitString "\n" (
-        builtins.readFile "${upstreamDotfiles}/dots/.config/hypr/hyprland/rules.conf"
-      );
+      rules = lib.splitString "\n" (builtins.readFile ./hypr/assets/hyprland/rules.conf);
       keepBlurRule =
         line:
         !(
@@ -140,12 +290,17 @@ let
     profile="end4"
     [ -s "$profile_file" ] && read -r profile < "$profile_file"
 
+    end4_ipc() {
+      ${resolveQsRuntime}
+      ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc "$@" >/dev/null 2>&1
+    }
+
     if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
       exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle applauncher
     fi
 
-    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec qs -p "$HOME/.config/quickshell/ii" ipc call search toggle
+    if end4_ipc call search toggle; then
+      exit 0
     fi
 
     if ${pkgs.procps}/bin/pgrep -x fuzzel >/dev/null 2>&1; then
@@ -166,8 +321,9 @@ let
       exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle guide
     fi
 
-    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec qs -p "$HOME/.config/quickshell/ii" ipc call search workspacesToggle
+    ${resolveQsRuntime}
+    if ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc call search workspacesToggle >/dev/null 2>&1; then
+      exit 0
     fi
 
     exec ${searchLauncher}/bin/search-launcher
@@ -181,11 +337,13 @@ let
     [ -s "$profile_file" ] && read -r profile < "$profile_file"
 
     if [ "$profile" = "ilyamiro" ] && [ -f "$HOME/.config/hypr/scripts/quickshell/Lock.qml" ]; then
-      exec quickshell -p "$HOME/.config/hypr/scripts/quickshell/Lock.qml"
+      ${resolveQsRuntime}
+      exec "$qs_bin" -p "$HOME/.config/hypr/scripts/quickshell/Lock.qml"
     fi
 
-    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec qs -p "$HOME/.config/quickshell/ii" ipc call lock activate
+    ${resolveQsRuntime}
+    if ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc call lock activate >/dev/null 2>&1; then
+      exit 0
     fi
 
     exec ${pkgs.systemd}/bin/loginctl lock-session
@@ -202,8 +360,9 @@ let
       exec ${quickshellLock}/bin/quickshell-lock
     fi
 
-    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec qs -p "$HOME/.config/quickshell/ii" ipc call lock focus
+    ${resolveQsRuntime}
+    if ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc call lock focus >/dev/null 2>&1; then
+      exit 0
     fi
 
     exec ${quickshellLock}/bin/quickshell-lock
@@ -220,8 +379,9 @@ let
       exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle wallpaper
     fi
 
-    if qs -p "$HOME/.config/quickshell/ii" ipc show >/dev/null 2>&1; then
-      exec qs -p "$HOME/.config/quickshell/ii" ipc call wallpaperSelector toggle
+    ${resolveQsRuntime}
+    if ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc call wallpaperSelector toggle >/dev/null 2>&1; then
+      exit 0
     fi
 
     exec ${wallpaperRandom}/bin/wallpaper-random
@@ -319,8 +479,8 @@ let
         key = "code:1${toString i}";
       in
       ''
-        bind = $mod, ${key}, workspace, ${ws}
-        bind = $shiftMod, ${key}, movetoworkspace, ${ws}''
+        bind = $mod, ${key}, exec, ${superDispatch}/bin/super-dispatch workspace ${ws}
+        bind = $shiftMod, ${key}, exec, ${superDispatch}/bin/super-dispatch movetoworkspace ${ws}''
     ) 9
   );
 
@@ -363,43 +523,50 @@ let
         $mod = SUPER
 
         # Apps and shell entry points.
-        bind = $mainMod, Q, killactive,
-        bind = $mainMod, H, exit,
-        bind = $mainMod, F, exec, file-manager
-        bind = $mainMod, V, togglefloating,
-        bind = $mainMod, J, togglesplit,
-        bind = $mainMod, B, exec, ${pkgs.google-chrome}/bin/google-chrome-stable
-        bind = $mainMod, T, exec, ${pkgs.kitty}/bin/kitty
-        bind = $mainMod, Return, exec, ${pkgs.kitty}/bin/kitty
-        bind = $mainMod, C, exec, code --enable-features=UseOzonePlatform --ozone-platform=wayland
-        bind = $mainMod, E, exec, ${pkgs.telegram-desktop}/bin/telegram-desktop
-        bind = $mainMod, D, exec, search-launcher
-        bind = $mainMod, Space, exec, search-launcher
-        bindr = $mainMod, SUPER_L, exec, search-launcher
-        bindr = $mainMod, SUPER_R, exec, search-launcher
+        bind = $mainMod, Q, exec, ${superDispatch}/bin/super-dispatch killactive
+        bind = $mainMod, H, exec, ${superDispatch}/bin/super-dispatch exit
+        bind = $mainMod, F, exec, ${superRun}/bin/super-run ${fileManager}/bin/file-manager
+        bind = $mainMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating
+        bind = $mainMod, J, exec, ${superDispatch}/bin/super-dispatch togglesplit
+        bind = $mainMod, B, exec, ${superRun}/bin/super-run ${pkgs.google-chrome}/bin/google-chrome-stable
+        bind = $mainMod, T, exec, ${superRun}/bin/super-run ${pkgs.kitty}/bin/kitty
+        bind = $mainMod, Return, exec, ${superRun}/bin/super-run ${pkgs.kitty}/bin/kitty
+        bind = $mainMod, C, exec, ${superRun}/bin/super-run code --enable-features=UseOzonePlatform --ozone-platform=wayland
+        bind = $mainMod, E, exec, ${superRun}/bin/super-run ${pkgs.telegram-desktop}/bin/telegram-desktop
+        bind = $mainMod, D, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher
+        bind = $mainMod, Space, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher
+        bindid = Super, Super_L, Toggle search, global, quickshell:searchToggleRelease
+        bindid = Super, Super_R, Toggle search, global, quickshell:searchToggleRelease
+        binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt
+        bind = Ctrl, Super_L, global, quickshell:searchToggleReleaseInterrupt
+        bind = Ctrl, Super_R, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse:273, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse_up, global, quickshell:searchToggleReleaseInterrupt
+        bind = Super, mouse_down, global, quickshell:searchToggleReleaseInterrupt
         
-        bind = $mainMod, Tab, submap, resize
-        bind = $shiftMod, Tab, exec, quickshell-overview
-        bind = CTRL, L, exec, quickshell-lock
-        bind = $mainMod, L, exec, quickshell-lock
+        bind = $mainMod, Tab, exec, ${superDispatch}/bin/super-dispatch submap resize
+        bind = $shiftMod, Tab, exec, ${superRun}/bin/super-run ${quickshellOverview}/bin/quickshell-overview
+        bind = CTRL, L, exec, ${quickshellLock}/bin/quickshell-lock
+        bind = $mainMod, L, exec, ${superRun}/bin/super-run ${quickshellLock}/bin/quickshell-lock
 
         # Utilities.
-        bind = $shiftMod, C, exec, clipboard
-        bind = $altMod, C, exec, clipboard
-        bind = $shiftMod, E, exec, ${pkgs.wofi-emoji}/bin/wofi-emoji
-        bind = $mainMod, P, exec, quickshell-wallpaper-selector
-        bind = $shiftMod, P, exec, wallpaper-random
-        bind = $mod, F2, exec, night-shift
+        bind = $shiftMod, C, exec, ${superRun}/bin/super-run ${clipboardPicker}/bin/clipboard
+        bind = $altMod, C, exec, ${superRun}/bin/super-run ${clipboardPicker}/bin/clipboard
+        bind = $shiftMod, E, exec, ${superRun}/bin/super-run ${pkgs.wofi-emoji}/bin/wofi-emoji
+        bind = $mainMod, P, exec, ${superRun}/bin/super-run ${quickshellWallpaperSelector}/bin/quickshell-wallpaper-selector
+        bind = $shiftMod, P, exec, ${superRun}/bin/super-run ${wallpaperRandom}/bin/wallpaper-random
+        bind = $mod, F2, exec, ${superRun}/bin/super-run ${nightShift}/bin/night-shift
 
         # Window focus and movement.
-        bind = $mainMod, Left, movefocus, l
-        bind = $mainMod, Right, movefocus, r
-        bind = $mainMod, Up, movefocus, u
-        bind = $mainMod, Down, movefocus, d
-        bind = $shiftMod, Left, movewindow, l
-        bind = $shiftMod, Right, movewindow, r
-        bind = $shiftMod, Up, movewindow, u
-        bind = $shiftMod, Down, movewindow, d
+        bind = $mainMod, Left, exec, ${superDispatch}/bin/super-dispatch movefocus l
+        bind = $mainMod, Right, exec, ${superDispatch}/bin/super-dispatch movefocus r
+        bind = $mainMod, Up, exec, ${superDispatch}/bin/super-dispatch movefocus u
+        bind = $mainMod, Down, exec, ${superDispatch}/bin/super-dispatch movefocus d
+        bind = $shiftMod, Left, exec, ${superDispatch}/bin/super-dispatch movewindow l
+        bind = $shiftMod, Right, exec, ${superDispatch}/bin/super-dispatch movewindow r
+        bind = $shiftMod, Up, exec, ${superDispatch}/bin/super-dispatch movewindow u
+        bind = $shiftMod, Down, exec, ${superDispatch}/bin/super-dispatch movewindow d
 
         bindm = $mod, mouse:272, movewindow
         bindm = $mod, mouse:273, resizewindow
@@ -408,7 +575,7 @@ let
 
         # Super+Tab enters resize mode.
         # End-4 workspace overview is moved to Super+Shift+Tab.
-        bind = $shiftMod, R, submap, resize
+        bind = $shiftMod, R, exec, ${superDispatch}/bin/super-dispatch submap resize
         submap = resize
         binde = , Left, resizeactive, -40 0
         binde = , Right, resizeactive, 40 0
@@ -421,28 +588,28 @@ let
         bind = , Escape, submap, global
         bind = , Return, submap, global
         bind = , Tab, submap, global
-        bind = $shiftMod, R, submap, global
+        bind = $shiftMod, R, exec, ${superDispatch}/bin/super-dispatch submap global
         submap = global
 
         # Screenshots.
         bind = , Print, exec, ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy
-        bind = $mainMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
-        bind = $shiftMod, Print, exec, mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+        bind = $mainMod, Print, exec, ${superRun}/bin/super-run ${pkgs.bash}/bin/bash -lc 'mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png'
+        bind = $shiftMod, Print, exec, ${superRun}/bin/super-run ${pkgs.bash}/bin/bash -lc 'mkdir -p ~/Pictures && ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png'
 
         # Workspaces.
     ${workspaceDispatchBinds}
 
         # Hardware keys.
-        bindl = , XF86AudioMute, exec, sound-toggle
+        bindl = , XF86AudioMute, exec, ${soundToggle}/bin/sound-toggle
         bindl = , XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause
         bindl = , XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next
         bindl = , XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous
-        bindl = , switch:Lid Switch, exec, quickshell-lock
+        bindl = , switch:Lid Switch, exec, ${quickshellLock}/bin/quickshell-lock
 
-        bindle = , XF86AudioRaiseVolume, exec, sound-up
-        bindle = , XF86AudioLowerVolume, exec, sound-down
-        bindle = , XF86MonBrightnessUp, exec, brightness-up
-        bindle = , XF86MonBrightnessDown, exec, brightness-down
+        bindle = , XF86AudioRaiseVolume, exec, ${soundUp}/bin/sound-up
+        bindle = , XF86AudioLowerVolume, exec, ${soundDown}/bin/sound-down
+        bindle = , XF86MonBrightnessUp, exec, ${brightnessUp}/bin/brightness-up
+        bindle = , XF86MonBrightnessDown, exec, ${brightnessDown}/bin/brightness-down
   '';
 
   hyprCustomKeybinds = ''
@@ -544,6 +711,24 @@ let
     # session with a fallback mode.
     monitor = eDP-1, 1920x1080@144, 0x0, 1, vrr, 0
   '';
+
+  hyprRootConfig = ''
+    # Managed by Home Manager. Keep the root file small so Hyprland never falls
+    # back to its autogenerated example config.
+    source = ~/.config/hypr/hyprland/env.conf
+    source = ~/.config/hypr/hyprland/colors.conf
+    source = ~/.config/hypr/monitors.conf
+    source = ~/.config/hypr/hyprland/general.conf
+    source = ~/.config/hypr/hyprland/rules.conf
+    source = ~/.config/hypr/hyprland/execs.conf
+    source = ~/.config/hypr/hyprland/keybinds.conf
+
+    source = ~/.config/hypr/custom/env.conf
+    source = ~/.config/hypr/custom/general.conf
+    source = ~/.config/hypr/custom/rules.conf
+    source = ~/.config/hypr/custom/execs.conf
+    source = ~/.config/hypr/custom/keybinds.conf
+  '';
 in
 {
   options.modules.hyprland = {
@@ -560,7 +745,12 @@ in
       nightLightToggle
       nightShift
       clipboardPicker
+      quickshellSessionBoot
+      quickshellServiceStart
+      quickshellSuperInterrupt
       searchLauncher
+      superDispatch
+      superRun
       quickshellOverview
       quickshellLock
       quickshellLockFocus
@@ -570,7 +760,14 @@ in
       wallpaperRandom
     ];
 
-    # The soymou/illogical-flake manages most of Hyprland; keep overrides in custom/*.
+    xdg.configFile."hypr/custom/env.conf".source = lib.mkForce ./hypr/assets/custom/env.conf;
+    xdg.configFile."hypr/custom/rules.conf".source = lib.mkForce ./hypr/assets/custom/rules.conf;
+
+    xdg.configFile."hypr/hyprland.conf" = {
+      source = lib.mkForce (pkgs.writeText "hyprland.conf" hyprRootConfig);
+      force = true;
+    };
+
     xdg.configFile."hypr/custom/execs.conf".source = lib.mkForce (
       pkgs.writeText "hypr-custom-execs.conf" hyprCustomExecs
     );
@@ -603,7 +800,10 @@ in
       pkgs.writeText "hypr-hyprland-rules.conf" hyprPatchedRules
     );
 
-    # Keep style/input tuning here; illogical's default execs.conf already starts qs.
+    xdg.configFile."hypr/hyprland/env.conf".source = lib.mkForce ./hypr/assets/hyprland/env.conf;
+    xdg.configFile."hypr/hyprland/scripts".source = lib.mkForce ./hypr/assets/hyprland/scripts;
+    xdg.configFile."hypr/hyprland/colors.conf".source = lib.mkForce ./hypr/assets/hyprland/colors.conf;
+
     xdg.configFile."hypr/custom/general.conf".source = lib.mkForce (
       pkgs.writeText "hypr-custom-general.conf" hyprCustomGeneral
     );
