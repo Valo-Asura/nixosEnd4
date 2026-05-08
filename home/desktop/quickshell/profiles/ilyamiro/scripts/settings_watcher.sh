@@ -2,7 +2,7 @@
 
 # File paths
 SETTINGS_FILE="$HOME/.config/hypr/settings.json"
-WEATHER_SCRIPT="$HOME/.config/hypr/scripts/weather.sh"
+WEATHER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/calendar/weather.sh"
 ENV_FILE="$HOME/.config/hypr/scripts/quickshell/calendar/.env"
 
 # Target configuration files

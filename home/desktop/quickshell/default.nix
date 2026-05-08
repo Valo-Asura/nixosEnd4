@@ -493,6 +493,7 @@ in
       bc
       bluez
       cava
+      curl
       ddcutil
       easyeffects
       ffmpeg
@@ -509,6 +510,7 @@ in
       imagemagick
       inotify-tools
       iw
+      jq
       kdePackages.breeze-icons
       kdePackages.kdialog
       kdePackages.kirigami
@@ -675,6 +677,30 @@ in
         mkdir -p "$dest"
         ${pkgs.rsync}/bin/rsync -a --delete "${ilyamiroHyprScripts}/" "$dest/"
         chmod -R u+rwX "$dest"
+
+        weather_env="$HOME/.config/hypr/scripts/quickshell/calendar/.env"
+        mkdir -p "$(dirname "$weather_env")"
+        touch "$weather_env"
+
+        ensure_weather_env() {
+          key="$1"
+          value="$2"
+          if ! ${pkgs.gnugrep}/bin/grep -q "^$key=" "$weather_env"; then
+            printf "%s='%s'\n" "$key" "$value" >> "$weather_env"
+          fi
+        }
+
+        ensure_weather_env "OPENWEATHER_CITY_ID" "1258128"
+        ensure_weather_env "OPENWEATHER_UNIT" "metric"
+        ensure_weather_env "OPENMETEO_LATITUDE" "30.0869"
+        ensure_weather_env "OPENMETEO_LONGITUDE" "78.2676"
+        ensure_weather_env "OPENMETEO_LOCATION" "Gumaniwala, Uttarakhand"
+        ensure_weather_env "OPENMETEO_TIMEZONE" "auto"
+
+        weather_cache="$HOME/.cache/quickshell/weather/weather.json"
+        if [ -f "$weather_cache" ] && ${pkgs.gnugrep}/bin/grep -q '"desc": "No API Key"' "$weather_cache"; then
+          rm -f "$weather_cache"
+        fi
 
         settings="$HOME/.config/hypr/settings.json"
         if [ ! -s "$settings" ] || ! ${pkgs.jq}/bin/jq -e . "$settings" >/dev/null 2>&1; then

@@ -551,7 +551,7 @@ let
   hyprMainKeybinds = ''
         # Own the main keybind file directly so upstream End-4 shell binds do not
         # keep leaking in underneath local overrides.
-        submap = global
+        submap = reset
 
         $mainMod = SUPER
         $shiftMod = SUPER SHIFT
@@ -615,11 +615,11 @@ let
         binde = , mouse_down, resizeactive, -40 0
         binde = SHIFT, mouse_up, resizeactive, 0 40
         binde = SHIFT, mouse_down, resizeactive, 0 -40
-        bind = , Escape, submap, global
-        bind = , Return, submap, global
-        bind = , Tab, submap, global
-        bind = $shiftMod, R, exec, ${superDispatch}/bin/super-dispatch submap global
-        submap = global
+        bind = , Escape, submap, reset
+        bind = , Return, submap, reset
+        bind = , Tab, submap, reset
+        bind = $shiftMod, R, exec, ${superDispatch}/bin/super-dispatch submap reset
+        submap = reset
 
         # Screenshots.
         bind = , Print, exec, ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy

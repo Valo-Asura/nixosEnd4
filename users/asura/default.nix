@@ -1,9 +1,17 @@
 {
   lib,
+  osConfig ? null,
   pkgs,
   ...
 }:
 
+let
+  xserverArgs =
+    if osConfig == null then
+      ""
+    else
+      toString osConfig.services.xserver.displayManager.xserverArgs;
+in
 {
   imports = [
     # Shared base tooling.
@@ -115,6 +123,20 @@
   # i3 config: ~/.config/i3/ directory exists but is empty, causing i3 to ask
   # "create new config or use defaults". Provide the file so i3 finds it first.
   xdg.configFile."i3/config".source = ../../home/desktop/i3/config;
+
+  # greetd/tuigreet launches XSession entries through startx. startx prefers
+  # ~/.xserverrc before /etc/X11/xinit/xserverrc, so keep the user fallback
+  # pointed at NixOS' generated Xorg arguments. Without this, X starts with
+  # only the raw Xorg module path and i3 gets a bar, wallpaper, and cursor but
+  # no working libinput mouse/touchpad devices.
+  home.file.".xserverrc" = {
+    executable = true;
+    text = ''
+      #!${pkgs.runtimeShell}
+      exec ${pkgs.xorg-server}/bin/X ${xserverArgs} "$@"
+    '';
+  };
+
   xdg.configFile."autostart/blueman.desktop".text = ''
     [Desktop Entry]
     Hidden=true

@@ -89,6 +89,8 @@ def test_nbfc_selector_model_split_is_preserved():
 
 def test_quickshell_uses_vendored_profiles_only():
     quickshell = read("home/desktop/quickshell/default.nix")
+    weather = read("home/desktop/quickshell/profiles/ilyamiro/scripts/quickshell/calendar/weather.sh")
+    settings_watcher = read("home/desktop/quickshell/profiles/ilyamiro/scripts/settings_watcher.sh")
     assert "./profiles/end4/ii" in quickshell
     assert "./profiles/ilyamiro/scripts" in quickshell
     assert "x15-quickshell-config" in quickshell
@@ -103,10 +105,14 @@ def test_quickshell_uses_vendored_profiles_only():
     assert "/home/asura/Downloads" not in quickshell
     assert (REPO / "home/desktop/quickshell/profiles/end4/ii/shell.qml").exists()
     assert (REPO / "home/desktop/quickshell/profiles/ilyamiro/scripts/quickshell/Main.qml").exists()
+    assert "OPENMETEO_LATITUDE" in quickshell
+    assert "get_open_meteo_data" in weather
+    assert 'WEATHER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/calendar/weather.sh"' in settings_watcher
 
 
 def test_hyprland_uses_local_assets_and_fixed_super_binds():
     hyprland = read("home/desktop/hyprland.nix")
+    hypr_keybinds_asset = read("home/desktop/hypr/assets/hyprland/keybinds.conf")
     assert "inputs.illogical-flake" not in hyprland
     assert "./hypr/assets/hyprland/general.conf" in hyprland
     assert "./hypr/assets/hyprland/execs.conf" in hyprland
@@ -118,6 +124,10 @@ def test_hyprland_uses_local_assets_and_fixed_super_binds():
     assert "quickshell-super-interrupt" in hyprland
     assert "resolveQsRuntime" in hyprland
     assert "bind = $mainMod, Q, exec, ${superDispatch}/bin/super-dispatch killactive" in hyprland
+    assert "submap = global" not in hyprland
+    assert "submap = reset" in hyprland
+    assert "submap global" not in hyprland
+    assert "submap reset" in hyprland
     assert "bind = $mainMod, V, exec, ${superRun}/bin/super-run ${clipboardPicker}/bin/clipboard" in hyprland
     assert "bind = $shiftMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating" in hyprland
     assert "bind = $mainMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating" not in hyprland
@@ -139,11 +149,30 @@ def test_hyprland_uses_local_assets_and_fixed_super_binds():
 
     hypr_env = read("home/desktop/hypr/assets/hyprland/env.conf")
     assert "/run/wrappers/bin:/run/current-system/sw/bin" in hypr_env
+    assert "submap = global" not in hypr_keybinds_asset
+    assert "submap global" not in hypr_keybinds_asset
+    assert "submap = reset" in hypr_keybinds_asset
 
     ilyamiro_main = read("home/desktop/quickshell/profiles/ilyamiro/scripts/quickshell/Main.qml")
     assert 'name: "searchToggleRelease"' in ilyamiro_main
     assert 'name: "searchToggleReleaseInterrupt"' in ilyamiro_main
     assert "toggle applauncher" in ilyamiro_main
+
+
+def test_quickshell_dock_resolves_files_icon_and_hover_preview_position():
+    app_search = read("home/desktop/quickshell/profiles/end4/ii/services/AppSearch.qml")
+    launcher_apps = read("home/desktop/quickshell/profiles/end4/ii/services/LauncherApps.qml")
+    dock_apps = read("home/desktop/quickshell/profiles/end4/ii/modules/ii/dock/DockApps.qml")
+    dock_app_button = read("home/desktop/quickshell/profiles/end4/ii/modules/ii/dock/DockAppButton.qml")
+
+    assert '"nemo.desktop": "nemo"' in app_search
+    assert '"system-file-manager": "nemo"' in app_search
+    assert "entry && iconExists(entry.icon)" in app_search
+    assert '"nemo": "file-manager"' in launcher_apps
+    assert "function lookupDesktopEntry(appId)" in launcher_apps
+    assert "LauncherApps.launchAppId(appToplevel.appId)" in dock_app_button
+    assert "root.lastHoveredButton.window" not in dock_apps
+    assert "Math.min(Math.max(0, preferredX), maxX)" in dock_apps
 
 
 def test_dev_profile_is_declarative_and_split():
@@ -162,6 +191,24 @@ def test_dev_profile_is_declarative_and_split():
     assert "install-extension" not in dev_text
     assert not (REPO / "home/dev/ide.nix").exists()
     assert not (REPO / "home/dev/nanobot.nix").exists()
+
+
+def test_i3_fallback_uses_nixos_xserverrc_and_user_config():
+    i3_module = read("modules/desktop/i3-session.nix")
+    user = read("users/asura/default.nix")
+    i3_config = read("home/desktop/i3/config")
+    host = read("hosts/x15xs/default.nix")
+
+    assert "i3Session.enable = true;" in host
+    assert "services.libinput.enable = true;" in i3_module
+    assert "displayManager.startx" in i3_module
+    assert "generateScript = true;" in i3_module
+    assert 'xdg.configFile."i3/config".source = ../../home/desktop/i3/config;' in user
+    assert 'home.file.".xserverrc"' in user
+    assert "osConfig.services.xserver.displayManager.xserverArgs" in user
+    assert "pkgs.xorg-server" in user
+    assert "bindsym $mod+q kill" in i3_config
+    assert "exec_always --no-startup-id x15-i3-apply-wallpaper" in i3_config
 
 
 def test_yazi_flavor_is_vendored():

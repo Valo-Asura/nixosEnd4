@@ -1,6 +1,6 @@
 # AI-Focused NixOS Workstation and Experimentation Workflow
 
-Status: updated for the `x15xs` NixOS flake on `2026-05-06`.
+Status: updated for the `x15xs` NixOS flake on `2026-05-08`.
 
 ## 1. Project Overview
 
@@ -293,7 +293,142 @@ That is why I describe it as vibe coded but validated properly. The AI helps wit
 
 Those tasks were useful because they mix shell, editor setup, desktop behavior, and declarative config. That is where weak context handling usually shows up fast.
 
-## 4. Resume Project Section
+## 4. Desktop Session Runbook
+
+This is the checklist I want future chats to use before changing desktop files.
+
+### 4.1 Source of truth
+
+Use these files first:
+
+- host login/session routing: `hosts/x15xs/default.nix`
+- Hyprland binds and startup: `home/desktop/hyprland.nix`
+- Hyprland included assets: `home/desktop/hypr/assets/hyprland/`
+- QuickShell profile wiring: `home/desktop/quickshell/default.nix`
+- End4 QuickShell source: `home/desktop/quickshell/profiles/end4/ii/`
+- ilyamiro QuickShell source: `home/desktop/quickshell/profiles/ilyamiro/scripts/`
+- i3 fallback module: `modules/desktop/i3-session.nix`
+- i3 user config: `home/desktop/i3/config`
+- user-level desktop links: `users/asura/default.nix`
+
+The live generated files are usually symlinks into `/nix/store`. Always compare live paths with repo paths before assuming a patch is active.
+
+```sh
+readlink -f ~/.config/hypr/hyprland/keybinds.conf
+readlink -f ~/.config/quickshell/ii/shell.qml
+readlink -f ~/.config/i3/config
+readlink -f ~/.xserverrc
+```
+
+### 4.2 Live check board
+
+Use this as an interactive checklist:
+
+- [ ] `git status --short`
+- [ ] `hyprctl submap`
+- [ ] `hyprctl -j binds | jq '[.[] | select(.submap == "global")] | length'`
+- [ ] `hyprctl -j binds | jq -r '.[] | select(.modmask == 64 and .key == "Q")'`
+- [ ] `qs list --all`
+- [ ] `systemctl --user status x15-quickshell --no-pager -l`
+- [ ] `hyprctl layers | sed -n '/quickshell:dock/,+8p'`
+- [ ] `journalctl --user -u x15-quickshell -n 120 --no-pager`
+- [ ] `journalctl -b --no-pager | rg -i 'greetd|tuigreet|xsession|startx|xorg|i3|libinput|mouse|touchpad'`
+- [ ] `rg -n -i 'libinput|mouse|touchpad|No input driver|Failed to load module' ~/.local/share/xorg/Xorg.*.log*`
+
+### 4.3 Hyprland and QuickShell acceptance checks
+
+The expected current behavior:
+
+- `Super+Q` closes the active window through `super-dispatch killactive`.
+- Hyprland should be in the `default` submap during normal use.
+- Live Super binds should not be registered under `global`.
+- `Super+D` and `Super+Space` open the launcher.
+- Releasing bare `Super` opens the launcher, but `Super+Q` must not also open it.
+- `x15-quickshell.service` should be active with one End4 `qs -c ii` instance.
+- `quickshell:dock` and `quickshell:bar` should appear in `hyprctl layers`.
+- The ilyamiro weather script should work without an OpenWeather key by falling back to Open-Meteo.
+
+Useful focused commands:
+
+```sh
+hyprctl submap
+hyprctl -j binds | jq -r '.[] | select(.modmask == 64 and (.key == "Q" or .key == "D" or .key == "Space" or .key == "Super_L")) | [.submap, .key, .dispatcher, .arg] | @tsv'
+qs -c ii ipc show | rg 'target search|toggleReleaseInterrupt|target bar|target panelFamily'
+~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata
+jq -r '.current_temp, .forecast[0].desc' ~/.cache/quickshell/weather/weather.json
+```
+
+### 4.4 i3 fallback acceptance checks
+
+The i3 fallback is an X11 session selected from greetd/tuigreet. It should show the i3 bar, apply the wallpaper, use the same `Super+Q` / launcher / workspace feel as Hyprland where practical, and accept mouse or touchpad input.
+
+The failure mode found on May 8, 2026 was:
+
+- Xorg started.
+- i3 drew the bar.
+- `x15-i3-apply-wallpaper` set the wallpaper.
+- the cursor was visible.
+- mouse/touchpad input did not work.
+
+The Xorg log showed the real cause:
+
+```text
+Failed to load module "libinput"
+No input driver matching `libinput'
+No input driver specified, ignoring this device.
+```
+
+That means the X server was being launched through raw `startx` defaults instead of NixOS' generated X server arguments. The fix is:
+
+- `modules/desktop/i3-session.nix` enables `services.xserver.displayManager.startx`
+- `users/asura/default.nix` provides `~/.xserverrc` using `osConfig.services.xserver.displayManager.xserverArgs`
+- `~/.config/i3/config` is linked so i3 never asks to create a default config
+
+After a rebuild or Home Manager activation, verify:
+
+```sh
+readlink -f ~/.xserverrc
+sed -n '1,20p' ~/.xserverrc
+readlink -f ~/.config/i3/config
+i3 -C -c /etc/i3/config
+rg -n -i 'Failed to load module "libinput"|No input driver matching|No input driver specified' ~/.local/share/xorg/Xorg.*.log*
+```
+
+The last command should only show old logs, not a fresh i3 login.
+
+### 4.5 Validation commands
+
+For small desktop edits:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_migration.py
+git diff --check
+nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --dry-run --show-trace
+```
+
+For QuickShell script edits, also run the changed shell scripts through `bash -n`.
+
+For i3 specifically:
+
+```sh
+i3 -C -c home/desktop/i3/config
+i3 -C -c /etc/i3/config
+```
+
+### 4.6 Future chat handoff
+
+Use this short handoff when continuing the work in a new chat:
+
+```text
+Working tree: /etc/nixos on x15xs.
+Main session: Hyprland with End4 QuickShell, launched through greetd -> uwsm.
+Fallback session: i3 through greetd/tuigreet XSession -> startx.
+Check live state before editing: git status, readlink generated config paths, hyprctl submap/binds, qs list, hyprctl layers, x15-quickshell journal.
+i3 mouse failure was from Xorg not loading libinput because raw startx missed NixOS xserver args. Verify ~/.xserverrc and Xorg logs.
+Finish with pytest migration tests, git diff --check, and nix dry build.
+```
+
+## 5. Resume Project Section
 
 ### Project Title
 
@@ -324,7 +459,7 @@ Built and maintained a modular NixOS workstation for local LLM experimentation, 
 - small, validated local RAG setups are easier to reason about than overbuilt stacks
 - reproducibility matters a lot when experimenting with multiple AI tools at once
 
-## 5. LinkedIn Post
+## 6. LinkedIn Post
 
 I have been building my NixOS laptop into a small AI-focused workstation and it has been a very good way to learn by actually breaking things.
 

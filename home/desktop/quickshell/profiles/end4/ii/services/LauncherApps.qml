@@ -7,6 +7,12 @@ import Quickshell
 
 Singleton {
     id: root
+    property var appCommandSubstitutions: ({
+        "file-manager": "file-manager",
+        "files": "file-manager",
+        "nemo": "file-manager",
+        "nemo.desktop": "file-manager"
+    })
 
     function isPinned(appId) {
         return Config.options.launcher.pinnedApps.indexOf(appId) !== -1;
@@ -30,6 +36,50 @@ Singleton {
         }
 
         entry.execute();
+    }
+
+    function normalizedAppIds(appId) {
+        const raw = String(appId || "").trim();
+        if (raw.length === 0)
+            return [];
+
+        const lower = raw.toLowerCase();
+        const withoutDesktop = lower.endsWith(".desktop") ? lower.slice(0, -8) : lower;
+        const withDesktop = `${withoutDesktop}.desktop`;
+        const candidates = [raw, lower, withoutDesktop, withDesktop];
+        const seen = ({});
+
+        return candidates.filter(id => {
+            if (!id || seen[id])
+                return false;
+
+            seen[id] = true;
+            return true;
+        });
+    }
+
+    function lookupDesktopEntry(appId) {
+        const candidates = normalizedAppIds(appId);
+        for (const candidate of candidates) {
+            const entry = DesktopEntries.byId(candidate) || DesktopEntries.heuristicLookup(candidate);
+            if (entry)
+                return entry;
+        }
+
+        return null;
+    }
+
+    function launchAppId(appId) {
+        const entry = lookupDesktopEntry(appId);
+        if (entry) {
+            launchDesktopEntry(entry);
+            return;
+        }
+
+        const command = appCommandSubstitutions[String(appId || "").toLowerCase()];
+        if (command) {
+            launchCommand(command);
+        }
     }
 
     function togglePin(appId) {

@@ -15,6 +15,10 @@ Singleton {
     property var substitutions: ({
         "code-url-handler": "visual-studio-code",
         "Code": "visual-studio-code",
+        "file-manager": "nemo",
+        "files": "nemo",
+        "nemo.desktop": "nemo",
+        "system-file-manager": "nemo",
         "gnome-tweaks": "org.gnome.tweaks",
         "pavucontrol-qt": "pavucontrol",
         "wps": "wps-office2019-kprometheus",
@@ -100,7 +104,7 @@ Singleton {
 
         // Quickshell's desktop entry lookup
         const entry = DesktopEntries.byId(str);
-        if (entry) return entry.icon;
+        if (entry && iconExists(entry.icon)) return entry.icon;
 
         // Normal substitutions
         if (substitutions[str]) return substitutions[str];

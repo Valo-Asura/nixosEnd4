@@ -14,13 +14,20 @@ ENV_FILE="$(dirname "$0")/.env"
 # API Settings
 # Load environment variables silently
 if [ -f "$ENV_FILE" ]; then
-    export $(grep -v '^#' "$ENV_FILE" | xargs)
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
 fi
 
 # API Settings from .env
 KEY="${OPENWEATHER_KEY:-}"
 ID="${OPENWEATHER_CITY_ID:-1258128}"
 UNIT="${OPENWEATHER_UNIT:-metric}" # Default to metric if not set
+OPENMETEO_LATITUDE="${OPENMETEO_LATITUDE:-30.0869}"
+OPENMETEO_LONGITUDE="${OPENMETEO_LONGITUDE:-78.2676}"
+OPENMETEO_LOCATION="${OPENMETEO_LOCATION:-Gumaniwala, Uttarakhand}"
+OPENMETEO_TIMEZONE="${OPENMETEO_TIMEZONE:-auto}"
 
 # Determine temperature symbol based on unit
 case "$UNIT" in
@@ -58,6 +65,64 @@ get_hex() {
     esac
 }
 
+get_wmo_icon() {
+    case $1 in
+        0) echo "" ;;
+        1|2|3) echo "" ;;
+        45|48) echo "󰖑" ;;
+        51|53|55|56|57|61|63|65|66|67|80|81|82) echo "󰖗" ;;
+        71|73|75|77|85|86) echo "" ;;
+        95|96|99) echo "" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_wmo_hex() {
+    case $1 in
+        0) echo "#f9e2af" ;;
+        1|2|3) echo "#bac2de" ;;
+        45|48) echo "#84afdb" ;;
+        51|53|55|56|57|61|63|65|66|67|80|81|82) echo "#74c7ec" ;;
+        71|73|75|77|85|86) echo "#cdd6f4" ;;
+        95|96|99) echo "#f9e2af" ;;
+        *) echo "#cdd6f4" ;;
+    esac
+}
+
+get_wmo_desc() {
+    case $1 in
+        0) echo "Clear Sky" ;;
+        1) echo "Mainly Clear" ;;
+        2) echo "Partly Cloudy" ;;
+        3) echo "Overcast" ;;
+        45|48) echo "Fog" ;;
+        51|53|55) echo "Drizzle" ;;
+        56|57) echo "Freezing Drizzle" ;;
+        61|63|65) echo "Rain" ;;
+        66|67) echo "Freezing Rain" ;;
+        71|73|75) echo "Snow" ;;
+        77) echo "Snow Grains" ;;
+        80|81|82) echo "Rain Showers" ;;
+        85|86) echo "Snow Showers" ;;
+        95|96|99) echo "Thunderstorm" ;;
+        *) echo "Cloudy" ;;
+    esac
+}
+
+openmeteo_temperature_unit() {
+    case "$UNIT" in
+        "imperial") echo "fahrenheit" ;;
+        *) echo "celsius" ;;
+    esac
+}
+
+openmeteo_windspeed_unit() {
+    case "$UNIT" in
+        "imperial") echo "mph" ;;
+        *) echo "ms" ;;
+    esac
+}
+
 write_dummy_data() {
     final_json="["
     for i in {0..4}; do
@@ -87,12 +152,124 @@ write_dummy_data() {
     echo "{ \"current_temp\": \"0.0\", \"current_icon\": \"\", \"current_hex\": \"#cdd6f4\", \"forecast\": ${final_json} }" > "${json_file}"
 }
 
+get_open_meteo_data() {
+    temp_unit="$(openmeteo_temperature_unit)"
+    wind_unit="$(openmeteo_windspeed_unit)"
+    raw_api=$(curl -fsS --max-time 10 --get "https://api.open-meteo.com/v1/forecast" \
+        --data-urlencode "latitude=${OPENMETEO_LATITUDE}" \
+        --data-urlencode "longitude=${OPENMETEO_LONGITUDE}" \
+        --data-urlencode "current=temperature_2m,weather_code" \
+        --data-urlencode "hourly=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,precipitation_probability,wind_speed_10m" \
+        --data-urlencode "daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,wind_speed_10m_max,relative_humidity_2m_mean,precipitation_probability_max" \
+        --data-urlencode "timezone=${OPENMETEO_TIMEZONE}" \
+        --data-urlencode "forecast_days=5" \
+        --data-urlencode "temperature_unit=${temp_unit}" \
+        --data-urlencode "windspeed_unit=${wind_unit}" 2>/dev/null || true)
+
+    if [ -z "$raw_api" ] || ! echo "$raw_api" | jq -e '.current and .daily and .hourly' >/dev/null 2>&1; then
+        if [ ! -f "$json_file" ]; then
+            write_dummy_data
+        fi
+        return
+    fi
+
+    c_temp=$(echo "$raw_api" | jq -r '.current.temperature_2m // 0')
+    c_temp=$(printf "%.1f" "$c_temp")
+    c_code=$(echo "$raw_api" | jq -r '.current.weather_code // 3')
+    c_icon=$(get_wmo_icon "$c_code")
+    c_hex=$(get_wmo_hex "$c_code")
+
+    forecast_json="[]"
+    counter=0
+    while IFS= read -r d; do
+        [ -n "$d" ] || continue
+
+        raw_max=$(echo "$raw_api" | jq -r ".daily.temperature_2m_max[$counter] // 0")
+        f_max_temp=$(printf "%.1f" "$raw_max")
+        raw_min=$(echo "$raw_api" | jq -r ".daily.temperature_2m_min[$counter] // 0")
+        f_min_temp=$(printf "%.1f" "$raw_min")
+        raw_feels=$(echo "$raw_api" | jq -r ".daily.apparent_temperature_max[$counter] // 0")
+        f_feels_like=$(printf "%.1f" "$raw_feels")
+        f_pop_pct=$(echo "$raw_api" | jq -r ".daily.precipitation_probability_max[$counter] // 0")
+        f_wind=$(echo "$raw_api" | jq -r ".daily.wind_speed_10m_max[$counter] // 0 | round")
+        f_hum=$(echo "$raw_api" | jq -r ".daily.relative_humidity_2m_mean[$counter] // 0 | round")
+        f_code=$(echo "$raw_api" | jq -r ".daily.weather_code[$counter] // 3")
+        f_icon=$(get_wmo_icon "$f_code")
+        f_hex=$(get_wmo_hex "$f_code")
+        f_desc=$(get_wmo_desc "$f_code")
+        f_day=$(date -d "$d" "+%a")
+        f_full_day=$(date -d "$d" "+%A")
+        f_date_num=$(date -d "$d" "+%d %b")
+
+        hourly_json=$(echo "$raw_api" | jq -c --arg d "$d" '
+            def wmo_icon:
+                if . == 0 then ""
+                elif (. == 1 or . == 2 or . == 3) then ""
+                elif (. == 45 or . == 48) then "󰖑"
+                elif (. == 51 or . == 53 or . == 55 or . == 56 or . == 57 or . == 61 or . == 63 or . == 65 or . == 66 or . == 67 or . == 80 or . == 81 or . == 82) then "󰖗"
+                elif (. == 71 or . == 73 or . == 75 or . == 77 or . == 85 or . == 86) then ""
+                elif (. == 95 or . == 96 or . == 99) then ""
+                else "" end;
+            def wmo_hex:
+                if . == 0 then "#f9e2af"
+                elif (. == 1 or . == 2 or . == 3) then "#bac2de"
+                elif (. == 45 or . == 48) then "#84afdb"
+                elif (. == 51 or . == 53 or . == 55 or . == 56 or . == 57 or . == 61 or . == 63 or . == 65 or . == 66 or . == 67 or . == 80 or . == 81 or . == 82) then "#74c7ec"
+                elif (. == 71 or . == 73 or . == 75 or . == 77 or . == 85 or . == 86) then "#cdd6f4"
+                elif (. == 95 or . == 96 or . == 99) then "#f9e2af"
+                else "#cdd6f4" end;
+            [range(0; (.hourly.time | length)) as $i
+                | select(.hourly.time[$i] | startswith($d))
+                | {
+                    time: (.hourly.time[$i] | split("T")[1]),
+                    temp: (((.hourly.temperature_2m[$i] // 0) * 10 | round / 10) | tostring),
+                    icon: ((.hourly.weather_code[$i] // 3) | wmo_icon),
+                    hex: ((.hourly.weather_code[$i] // 3) | wmo_hex)
+                }
+            ][0:8]')
+
+        day_json=$(jq -n \
+            --arg id "${counter}" \
+            --arg day "${f_day}" \
+            --arg day_full "${f_full_day}" \
+            --arg date "${f_date_num}" \
+            --arg max "${f_max_temp}" \
+            --arg min "${f_min_temp}" \
+            --arg feels_like "${f_feels_like}" \
+            --arg wind "${f_wind}" \
+            --arg humidity "${f_hum}" \
+            --arg pop "${f_pop_pct}" \
+            --arg icon "${f_icon}" \
+            --arg hex "${f_hex}" \
+            --arg desc "${f_desc}" \
+            --argjson hourly "${hourly_json}" \
+            '{id: $id, day: $day, day_full: $day_full, date: $date, max: $max, min: $min, feels_like: $feels_like, wind: $wind, humidity: $humidity, pop: $pop, icon: $icon, hex: $hex, desc: $desc, hourly: $hourly}')
+
+        forecast_json=$(jq -n --argjson forecast "$forecast_json" --argjson day "$day_json" '$forecast + [$day]')
+        counter=$((counter + 1))
+    done <<EOF
+$(echo "$raw_api" | jq -r '.daily.time[]?')
+EOF
+
+    if [ "$forecast_json" = "[]" ]; then
+        write_dummy_data
+        return
+    fi
+
+    jq -n \
+        --arg current_temp "${c_temp}" \
+        --arg current_icon "${c_icon}" \
+        --arg current_hex "${c_hex}" \
+        --argjson forecast "${forecast_json}" \
+        '{current_temp: $current_temp, current_icon: $current_icon, current_hex: $current_hex, forecast: $forecast}' > "${json_file}"
+}
+
 get_data() {
     # ---------------------------------------------------------
-    # DUMMY DATA FALLBACK (If API key is missing or skipped)
+    # NO-KEY FALLBACK (Open-Meteo)
     # ---------------------------------------------------------
     if [[ -z "$KEY" || "$KEY" == "Skipped" || "$KEY" == "OPENWEATHER_KEY" ]]; then
-        write_dummy_data
+        get_open_meteo_data
         return
     fi
 
@@ -111,9 +288,9 @@ get_data() {
     if [ -z "$raw_api" ] || [ -z "$raw_weather" ] || [[ "$api_cod" != "200" ]]; then
         # If curl failed (network glitch, rate limit, API downtime), don't destroy
         # the existing working cache. Just abort the update.
-        # If there is NO cache at all, then fall back to dummy data.
+        # If there is NO cache at all, then fall back to no-key weather.
         if [ ! -f "$json_file" ]; then
-            write_dummy_data
+            get_open_meteo_data
         fi
         return
     fi
@@ -238,6 +415,12 @@ get_data() {
     fi
 }
 
+ensure_data_file() {
+    if [ ! -f "$json_file" ]; then
+        get_data
+    fi
+}
+
 # --- MODE HANDLING ---
 if [[ "$1" == "--getdata" ]]; then
     get_data
@@ -252,8 +435,10 @@ elif [[ "$1" == "--json" ]]; then
         diff=$((current_time - file_time))
         
         if grep -q '"desc": "No API Key"' "$json_file"; then
-            # Key is pending/invalid. Check once an hour.
-            if [ $diff -gt $PENDING_RETRY_LIMIT ]; then
+            if [[ -z "$KEY" || "$KEY" == "Skipped" || "$KEY" == "OPENWEATHER_KEY" ]]; then
+                get_data
+            elif [ $diff -gt $PENDING_RETRY_LIMIT ]; then
+                # Key is pending/invalid. Check once an hour.
                 touch "$json_file" # Bump file timestamp slightly to avoid spamming processes
                 get_data &
             fi
@@ -292,16 +477,20 @@ elif [[ "$1" == "--nav" ]]; then
     fi
 
 elif [[ "$1" == "--icon" ]]; then
+    ensure_data_file
     cat "$json_file" | jq -r '.forecast[0].icon'
 
 elif [[ "$1" == "--temp" ]]; then 
+    ensure_data_file
     t=$(cat "$json_file" | jq -r '.forecast[0].max')
     echo "${t}${UNIT_SYM}"
 
 elif [[ "$1" == "--hex" ]]; then 
+    ensure_data_file
     cat "$json_file" | jq -r '.forecast[0].hex'
 
 elif [[ "$1" == "--current-icon" ]]; then
+    ensure_data_file
     icon=$(cat "$json_file" | jq -r '.current_icon // empty')
     if [[ -z "$icon" || "$icon" == "null" ]]; then 
         get_data
@@ -310,6 +499,7 @@ elif [[ "$1" == "--current-icon" ]]; then
     echo "$icon"
 
 elif [[ "$1" == "--current-temp" ]]; then 
+    ensure_data_file
     t=$(cat "$json_file" | jq -r '.current_temp // empty')
     if [[ -z "$t" || "$t" == "null" ]]; then 
         get_data
@@ -318,6 +508,7 @@ elif [[ "$1" == "--current-temp" ]]; then
     echo "${t}${UNIT_SYM}"
 
 elif [[ "$1" == "--current-hex" ]]; then
+    ensure_data_file
     hex=$(cat "$json_file" | jq -r '.current_hex // empty')
     if [[ -z "$hex" || "$hex" == "null" ]]; then 
         get_data

@@ -18,7 +18,6 @@ DockButton {
     property bool appIsActive: appToplevel.toplevels.find(t => (t.activated == true)) !== undefined
 
     readonly property bool isSeparator: appToplevel.appId === "SEPARATOR"
-    readonly property var desktopEntry: DesktopEntries.heuristicLookup(appToplevel.appId)
     enabled: !isSeparator
     implicitWidth: isSeparator ? 1 : implicitHeight - topInset - bottomInset
 
@@ -55,7 +54,7 @@ DockButton {
 
     onClicked: {
         if (appToplevel.toplevels.length === 0) {
-            LauncherApps.launchDesktopEntry(root.desktopEntry);
+            LauncherApps.launchAppId(appToplevel.appId);
             return;
         }
         lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
@@ -63,7 +62,7 @@ DockButton {
     }
 
     middleClickAction: () => {
-        LauncherApps.launchDesktopEntry(root.desktopEntry);
+        LauncherApps.launchAppId(appToplevel.appId);
     }
 
     altAction: () => {

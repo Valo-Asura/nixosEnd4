@@ -10,21 +10,31 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    readonly property var hoverWindow: root.hoverTarget?.QsWindow?.window
     default property Item contentItem
     property real popupBackgroundMargin: 0
 
     active: hoverTarget && hoverTarget.containsMouse
 
     function mappedHoverTargetPoint(x, y) {
-        if (!root.QsWindow || !root.QsWindow.window || !root.hoverTarget || !root.hoverTarget.window)
+        if (!root.hoverTarget || !root.hoverTarget.window)
             return Qt.point(0, 0);
 
-        return root.QsWindow.mapFromItem(root.hoverTarget, x, y);
+        return root.hoverTarget.mapToItem(null, x, y);
+    }
+
+    function clampMargin(value, availableSpace) {
+        const safeValue = isFinite(value) ? value : 0;
+        if (!availableSpace || availableSpace <= 0)
+            return Math.max(0, safeValue);
+
+        return Math.min(Math.max(0, safeValue), Math.max(0, availableSpace));
     }
 
     component: PanelWindow {
         id: popupWindow
         color: "transparent"
+        screen: root.hoverWindow?.screen
 
         anchors.left: !Config.options.bar.vertical || (Config.options.bar.vertical && !Config.options.bar.bottom)
         anchors.right: Config.options.bar.vertical && Config.options.bar.bottom
@@ -42,16 +52,22 @@ LazyLoader {
         exclusiveZone: 0
         margins {
             left: {
-                if (!Config.options.bar.vertical) return root.mappedHoverTargetPoint(
-                    (root.hoverTarget.width - popupBackground.implicitWidth) / 2, 0
-                ).x;
+                if (!Config.options.bar.vertical) {
+                    const targetPoint = root.mappedHoverTargetPoint(
+                        (root.hoverTarget.width - popupBackground.implicitWidth) / 2, 0
+                    );
+                    const screenWidth = popupWindow.screen?.width ?? root.hoverWindow?.width ?? 0;
+                    return root.clampMargin(targetPoint.x, screenWidth - popupWindow.implicitWidth);
+                }
                 return Appearance.sizes.verticalBarWidth
             }
             top: {
                 if (!Config.options.bar.vertical) return Appearance.sizes.barHeight;
-                return root.mappedHoverTargetPoint(
+                const targetPoint = root.mappedHoverTargetPoint(
                     (root.hoverTarget.height - popupBackground.implicitHeight) / 2, 0
-                ).y;
+                );
+                const screenHeight = popupWindow.screen?.height ?? root.hoverWindow?.height ?? 0;
+                return root.clampMargin(targetPoint.y, screenHeight - popupWindow.implicitHeight);
             }
             right: Appearance.sizes.verticalBarWidth
             bottom: Appearance.sizes.barHeight
