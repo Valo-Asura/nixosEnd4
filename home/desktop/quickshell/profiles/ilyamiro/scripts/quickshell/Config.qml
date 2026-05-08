@@ -90,7 +90,7 @@ Item {
 
     property string weatherUnit: "metric"
     property string weatherApiKey: ""
-    property string weatherCityId: ""
+    property string weatherCityId: "1258128"
 
     property var keybindsData: []
     signal keybindsLoaded()

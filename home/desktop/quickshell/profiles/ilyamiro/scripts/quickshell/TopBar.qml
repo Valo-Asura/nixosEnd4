@@ -557,7 +557,7 @@ Variants {
                 interval: 1000; running: true; repeat: true; triggeredOnStart: true
                 onTriggered: {
                     let d = new Date();
-                    barWindow.timeStr = Qt.formatDateTime(d, "HH:mm:ss");
+                    barWindow.timeStr = Qt.formatDateTime(d, "hh:mm:ss AP");
                     barWindow.fullDateStr = Qt.formatDateTime(d, "dddd, MMMM dd");
                     if (barWindow.typeInIndex >= barWindow.fullDateStr.length) {
                         barWindow.typeInIndex = barWindow.fullDateStr.length;
@@ -694,6 +694,31 @@ Variants {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle settings"])
+                            }
+                        }
+
+                        Rectangle {
+                            property bool isHovered: profileSwitchMouse.containsMouse
+                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : "transparent"
+                            radius: barWindow.s(10)
+                            height: parent.pillHeight; width: barWindow.s(34)
+
+                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰓡"
+                                font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(21)
+                                color: parent.isHovered ? mocha.mauve : mocha.text
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                scale: parent.isHovered ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                            }
+                            MouseArea {
+                                id: profileSwitchMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: Quickshell.execDetached(["quickshell-switch-end4"])
                             }
                         }
 

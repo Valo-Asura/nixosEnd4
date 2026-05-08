@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.modules.shell;
@@ -50,6 +55,11 @@ in
       ];
 
       initContent = ''
+        if [[ -d /run/wrappers/bin ]]; then
+          path=(/run/wrappers/bin ''${path:#/run/wrappers/bin})
+          export PATH
+        fi
+
         bindkey -e
         setopt auto_pushd pushd_ignore_dups hist_reduce_blanks hist_verify interactive_comments
         unsetopt beep

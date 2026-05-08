@@ -40,7 +40,7 @@ in
           enableOffloadCmd = true;
         };
 
-        # TODO: Verify bus IDs with `lspci | grep -E "VGA|3D"` before first boot.
+        # Verified on x15xs: Intel iGPU at 00:02.0, NVIDIA GA107M at 01:00.0.
         intelBusId = cfg.intelBusId;
         nvidiaBusId = cfg.nvidiaBusId;
       };

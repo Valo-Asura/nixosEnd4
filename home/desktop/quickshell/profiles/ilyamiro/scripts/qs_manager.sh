@@ -3,7 +3,6 @@
 # -----------------------------------------------------------------------------
 # CONSTANTS & ARGUMENTS
 # -----------------------------------------------------------------------------
-QS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BT_PID_FILE="$HOME/.cache/bt_scan_pid"
 BT_SCAN_LOG="$HOME/.cache/bt_scan.log"
 SRC_DIR="${WALLPAPER_DIR:-${srcdir:-$HOME/Pictures/Wallpapers}}"
@@ -16,9 +15,9 @@ mkdir -p "$QS_NETWORK_CACHE"
 IPC_FILE="/tmp/qs_widget_state"
 NETWORK_MODE_FILE="$QS_NETWORK_CACHE/mode"
 
-ACTION="$1"
-TARGET="$2"
-SUBTARGET="$3"
+ACTION="${1:-}"
+TARGET="${2:-}"
+SUBTARGET="${3:-}"
 
 # -----------------------------------------------------------------------------
 # FAST PATH: WORKSPACE SWITCHING
@@ -46,6 +45,7 @@ handle_wallpaper_prep() {
     (
         export THUMB_DIR SRC_DIR MANIFEST
 
+        # shellcheck disable=SC2329
         process_one() {
             img="$1"
             filename=$(basename "$img")
@@ -81,11 +81,11 @@ handle_wallpaper_prep() {
                 find "$THUMB_DIR" -maxdepth 1 -type f \
                     ! -name '.source_dir' ! -name '.manifest' -delete
                 echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-                > "$MANIFEST"  # reset manifest
+                : > "$MANIFEST"  # reset manifest
             fi
         else
             echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-            > "$MANIFEST"
+            : > "$MANIFEST"
         fi
 
         # Build manifest if missing
@@ -110,6 +110,7 @@ handle_wallpaper_prep() {
         done
 
         # New files: in src but not in manifest
+        # shellcheck disable=SC2016
         comm -23 \
             "$SRC_LIST" \
             <(sed 's/^000_//' "$MANIFEST" | sort) \
@@ -176,7 +177,7 @@ if [[ "$ACTION" == "close" ]]; then
     echo "close" > "$IPC_FILE"
     if [[ "$TARGET" == "network" || "$TARGET" == "all" || -z "$TARGET" ]]; then
         if [ -f "$BT_PID_FILE" ]; then
-            kill $(cat "$BT_PID_FILE") 2>/dev/null
+            kill "$(cat "$BT_PID_FILE")" 2>/dev/null
             rm -f "$BT_PID_FILE"
         fi
         (bluetoothctl scan off > /dev/null 2>&1) &
@@ -185,8 +186,6 @@ if [[ "$ACTION" == "close" ]]; then
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
-    CURRENT_MODE=$(cat "$NETWORK_MODE_FILE" 2>/dev/null)
-
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
         [[ -n "$SUBTARGET" ]] && echo "$SUBTARGET" > "$NETWORK_MODE_FILE"

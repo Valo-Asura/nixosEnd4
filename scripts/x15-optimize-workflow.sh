@@ -10,10 +10,13 @@ set -euo pipefail
 
 # Configuration
 readonly VERSION="1.1.0"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 readonly NIXOS_DIR="/etc/nixos"
-readonly LOG_FILE="/tmp/x15-optimization-$(date +%Y%m%d_%H%M%S).log"
-readonly BACKUP_DIR="/etc/nixos/.backup/$(date +%Y%m%d_%H%M%S)"
+LOG_FILE="/tmp/x15-optimization-$(date +%Y%m%d_%H%M%S).log"
+readonly LOG_FILE
+BACKUP_DIR="/etc/nixos/.backup/$(date +%Y%m%d_%H%M%S)"
+readonly BACKUP_DIR
 readonly FLAKE_TARGET="/etc/nixos#x15xs"
 
 # Colors
@@ -68,6 +71,7 @@ dryrun() {
         return 0
     fi
     log "Executing: $*"
+    # shellcheck disable=SC2294
     eval "$@"
 }
 
@@ -136,15 +140,17 @@ validate_environment() {
     checkpoint "NixOS config directory"
     
     # Check available disk space
-    local available=$(df / | awk 'NR==2{print $4}')
-    if [ $available -lt 524288 ]; then  # 512MB
-        error "Insufficient disk space ($(($available/1024))MB available)"
+    local available
+    available=$(df / | awk 'NR==2{print $4}')
+    if [ "$available" -lt 524288 ]; then  # 512MB
+        error "Insufficient disk space ($((available / 1024))MB available)"
         return 1
     fi
     checkpoint "Disk space sufficient"
     
     # Check hardware compatibility
-    local cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
+    local cpu_model
+    cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
     info "Detected CPU: $cpu_model"
     
     # Check for NVIDIA GPU
@@ -235,14 +241,16 @@ phase_hardware_monitoring() {
     fi
     
     # Check for thermal zones
-    local thermal_zones=$(find /sys/class/thermal -name "thermal_zone*" 2>/dev/null | wc -l)
+    local thermal_zones
+    thermal_zones=$(find /sys/class/thermal -name "thermal_zone*" 2>/dev/null | wc -l)
     info "Detected $thermal_zones thermal zones"
-    if [ $thermal_zones -gt 0 ]; then
+    if [ "$thermal_zones" -gt 0 ]; then
         checkpoint "Thermal zones detected"
     fi
     
     # Check for hwmon devices
-    local hwmon_count=$(find /sys/class/hwmon -name "hwmon*" 2>/dev/null | wc -l)
+    local hwmon_count
+    hwmon_count=$(find /sys/class/hwmon -name "hwmon*" 2>/dev/null | wc -l)
     info "Detected $hwmon_count hwmon devices"
     
     # Validate NBFC if using
@@ -341,14 +349,16 @@ phase_system_cleanup() {
     step "Analyzing cleanup opportunities..."
     
     # Check Nix store size
-    local nix_size=$(du -sm /nix/store 2>/dev/null | cut -f1)
+    local nix_size
+    nix_size=$(du -sm /nix/store 2>/dev/null | cut -f1)
     info "Nix store size: ${nix_size}MB"
-    if [ $nix_size -gt 10000 ]; then  # 10GB
+    if [ "$nix_size" -gt 10000 ]; then  # 10GB
         warn "Nix store is larger than 10GB, consider garbage collection"
     fi
     
     # Check journal size
-    local journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+\.?\d*[KMGT]iB' | head -1)
+    local journal_size
+    journal_size=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+\.?\d*[KMGT]iB' | head -1)
     if [ -n "$journal_size" ]; then
         info "Journal size: $journal_size"
     fi
@@ -366,13 +376,15 @@ phase_dry_build_validation() {
     run_logged "NixOS toplevel dry-build" bash -lc "cd '$NIXOS_DIR' && nix build .#nixosConfigurations.x15xs.config.system.build.toplevel --dry-run --show-trace" || return 1
 
     if [ -f "$NIXOS_DIR/tests/test_migration.py" ]; then
+        rm -rf "$NIXOS_DIR/tests/__pycache__" "$NIXOS_DIR/.pytest_cache" "$NIXOS_DIR/.hypothesis"
         if command -v pytest >/dev/null 2>&1; then
-            run_logged "Pytest structural checks" bash -lc "cd '$NIXOS_DIR' && pytest -q tests/test_migration.py" || return 1
+            run_logged "Pytest structural checks" bash -lc "cd '$NIXOS_DIR' && PYTHONDONTWRITEBYTECODE=1 pytest -q tests/test_migration.py" || return 1
         else
             run_logged \
                 "Pytest structural checks (ephemeral nix shell)" \
-                bash -lc "cd '$NIXOS_DIR' && nix-shell -p python3Packages.pytest python3Packages.hypothesis --run 'pytest -q tests/test_migration.py'" || return 1
+                bash -lc "cd '$NIXOS_DIR' && nix-shell -p python3Packages.pytest python3Packages.hypothesis --run 'PYTHONDONTWRITEBYTECODE=1 pytest -q tests/test_migration.py'" || return 1
         fi
+        rm -rf "$NIXOS_DIR/tests/__pycache__" "$NIXOS_DIR/.pytest_cache" "$NIXOS_DIR/.hypothesis"
     else
         warn "tests/test_migration.py missing"
     fi
@@ -533,6 +545,9 @@ parse_args() {
 
 main() {
     parse_args "$@"
+    if [ "$VERBOSE" -eq 1 ]; then
+        set -x
+    fi
     
     # Initialize log
     touch "$LOG_FILE"

@@ -91,10 +91,38 @@ Item { // Bar content region
 
             ActiveWindow {
                 Layout.leftMargin: 10 + (leftSidebarButton.visible ? 0 : Appearance.rounding.screenRounding)
-                Layout.rightMargin: Appearance.rounding.screenRounding
-                Layout.fillWidth: true
+                Layout.rightMargin: 6
+                Layout.fillWidth: false
                 Layout.fillHeight: true
+                Layout.maximumWidth: 360
                 visible: root.useShortenedForm === 0
+            }
+
+            RippleButton {
+                id: quickshellProfileSwitchButton
+
+                Layout.alignment: Qt.AlignVCenter
+                Layout.rightMargin: Appearance.rounding.screenRounding
+                Layout.fillWidth: false
+                visible: root.useShortenedForm === 0
+
+                implicitWidth: implicitHeight
+                implicitHeight: Appearance.sizes.baseBarHeight - 10
+
+                buttonRadius: Appearance.rounding.full
+                colBackground: hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.55)
+                colBackgroundHover: Appearance.colors.colLayer1Hover
+                colRipple: Appearance.colors.colLayer1Active
+
+                onClicked: Quickshell.execDetached(["quickshell-switch-ilyamiro"])
+
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "swap_horiz"
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colOnLayer0
+                }
             }
         }
     }

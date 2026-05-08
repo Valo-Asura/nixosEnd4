@@ -13,10 +13,7 @@ in
     programs.git = {
       enable = true;
 
-      signing = {
-        key = "TODO-REPLACE-WITH-YOUR-GPG-KEY";
-        signByDefault = false;
-      };
+      signing.signByDefault = false;
 
       settings = {
         user.name = "asura";

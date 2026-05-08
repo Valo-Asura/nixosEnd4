@@ -14,7 +14,7 @@ let
   quickshellSessionBoot = pkgs.writeShellScriptBin "quickshell-session-boot" ''
     set -euo pipefail
 
-    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/current-system/sw/bin:$PATH"
+    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
     state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
     mkdir -p "$state_dir"
     exec >> "$state_dir/boot.log" 2>&1
@@ -56,7 +56,7 @@ let
   quickshellServiceStart = pkgs.writeShellScriptBin "quickshell-service-start" ''
     set -u
 
-    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/current-system/sw/bin:$PATH"
+    export PATH="$HOME/.local/state/nix/profiles/home-manager/home-path/bin:/etc/profiles/per-user/''${USER:-asura}/bin:$HOME/.nix-profile/bin:/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
     state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
     mkdir -p "$state_dir"
     exec >> "$state_dir/boot.log" 2>&1
@@ -84,6 +84,10 @@ let
   quickshellSuperInterrupt = pkgs.writeShellScriptBin "quickshell-super-interrupt" ''
     set +e
 
+    state_dir="''${XDG_RUNTIME_DIR:-/tmp}/x15-hyprland"
+    mkdir -p "$state_dir"
+    ${pkgs.coreutils}/bin/date +%s%3N > "$state_dir/super-release-block-ms"
+
     ${hyprctl} dispatch global quickshell:searchToggleReleaseInterrupt >/dev/null 2>&1
 
     qs_bin=""
@@ -110,6 +114,29 @@ let
     fi
 
     exit 0
+  '';
+
+  superReleaseLauncher = pkgs.writeShellScriptBin "super-release-launcher" ''
+    set -euo pipefail
+
+    state_dir="''${XDG_RUNTIME_DIR:-/tmp}/x15-hyprland"
+    block_file="$state_dir/super-release-block-ms"
+    now="$(${pkgs.coreutils}/bin/date +%s%3N)"
+    last=0
+
+    if [ -s "$block_file" ]; then
+      read -r last < "$block_file" || last=0
+    fi
+
+    case "$last" in
+      ""|*[!0-9]*) last=0 ;;
+    esac
+
+    if [ $((now - last)) -lt 700 ]; then
+      exit 0
+    fi
+
+    exec ${searchLauncher}/bin/search-launcher
   '';
 
   resolveQsRuntime = ''
@@ -275,6 +302,15 @@ let
 
     if [ "$profile" = "ilyamiro" ] && [ -x "$HOME/.config/hypr/scripts/qs_manager.sh" ]; then
       exec "$HOME/.config/hypr/scripts/qs_manager.sh" toggle clipboard
+    fi
+
+    end4_ipc() {
+      ${resolveQsRuntime}
+      ${pkgs.coreutils}/bin/timeout 1s "$qs_bin" -c ii ipc "$@" >/dev/null 2>&1
+    }
+
+    if end4_ipc call search clipboardToggle; then
+      exit 0
     fi
 
     selection="$(${pkgs.cliphist}/bin/cliphist list | ${pkgs.wofi}/bin/wofi --dmenu -i -p clipboard 2>/dev/null || true)"
@@ -526,7 +562,8 @@ let
         bind = $mainMod, Q, exec, ${superDispatch}/bin/super-dispatch killactive
         bind = $mainMod, H, exec, ${superDispatch}/bin/super-dispatch exit
         bind = $mainMod, F, exec, ${superRun}/bin/super-run ${fileManager}/bin/file-manager
-        bind = $mainMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating
+        bind = $mainMod, V, exec, ${superRun}/bin/super-run ${clipboardPicker}/bin/clipboard
+        bind = $shiftMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating
         bind = $mainMod, J, exec, ${superDispatch}/bin/super-dispatch togglesplit
         bind = $mainMod, B, exec, ${superRun}/bin/super-run ${pkgs.google-chrome}/bin/google-chrome-stable
         bind = $mainMod, T, exec, ${superRun}/bin/super-run ${pkgs.kitty}/bin/kitty
@@ -535,15 +572,8 @@ let
         bind = $mainMod, E, exec, ${superRun}/bin/super-run ${pkgs.telegram-desktop}/bin/telegram-desktop
         bind = $mainMod, D, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher
         bind = $mainMod, Space, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher
-        bindid = Super, Super_L, Toggle search, global, quickshell:searchToggleRelease
-        bindid = Super, Super_R, Toggle search, global, quickshell:searchToggleRelease
-        binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt
-        bind = Ctrl, Super_L, global, quickshell:searchToggleReleaseInterrupt
-        bind = Ctrl, Super_R, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:272, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse:273, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse_up, global, quickshell:searchToggleReleaseInterrupt
-        bind = Super, mouse_down, global, quickshell:searchToggleReleaseInterrupt
+        bindr = $mainMod, Super_L, exec, ${superReleaseLauncher}/bin/super-release-launcher
+        bindr = $mainMod, Super_R, exec, ${superReleaseLauncher}/bin/super-release-launcher
         
         bind = $mainMod, Tab, exec, ${superDispatch}/bin/super-dispatch submap resize
         bind = $shiftMod, Tab, exec, ${superRun}/bin/super-run ${quickshellOverview}/bin/quickshell-overview

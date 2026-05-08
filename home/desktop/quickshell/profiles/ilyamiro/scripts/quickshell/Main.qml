@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
@@ -12,6 +13,7 @@ import "notifications" as Notifs
 PanelWindow {
     id: masterWindow
     color: "transparent"
+    property bool superReleaseMightTrigger: true
 
     Connections {
         target: Quickshell
@@ -30,6 +32,31 @@ PanelWindow {
     
         function forceReload() {
             Quickshell.reload(true) 
+        }
+    }
+
+    GlobalShortcut {
+        name: "searchToggleRelease"
+        description: "Toggle app launcher on plain Super release"
+
+        onPressed: {
+            masterWindow.superReleaseMightTrigger = true
+        }
+
+        onReleased: {
+            if (masterWindow.superReleaseMightTrigger) {
+                Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle applauncher"])
+            }
+            masterWindow.superReleaseMightTrigger = true
+        }
+    }
+
+    GlobalShortcut {
+        name: "searchToggleReleaseInterrupt"
+        description: "Block plain Super launcher when another Super chord is used"
+
+        onPressed: {
+            masterWindow.superReleaseMightTrigger = false
         }
     }
 

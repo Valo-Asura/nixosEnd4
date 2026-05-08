@@ -118,16 +118,32 @@ def test_hyprland_uses_local_assets_and_fixed_super_binds():
     assert "quickshell-super-interrupt" in hyprland
     assert "resolveQsRuntime" in hyprland
     assert "bind = $mainMod, Q, exec, ${superDispatch}/bin/super-dispatch killactive" in hyprland
-    assert "bindid = Super, Super_L, Toggle search, global, quickshell:searchToggleRelease" in hyprland
-    assert "bindid = Super, Super_R, Toggle search, global, quickshell:searchToggleRelease" in hyprland
+    assert "bind = $mainMod, V, exec, ${superRun}/bin/super-run ${clipboardPicker}/bin/clipboard" in hyprland
+    assert "bind = $shiftMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating" in hyprland
+    assert "bind = $mainMod, V, exec, ${superDispatch}/bin/super-dispatch togglefloating" not in hyprland
+    assert "bindr = $mainMod, Super_L, exec, ${superReleaseLauncher}/bin/super-release-launcher" in hyprland
+    assert "bindr = $mainMod, Super_R, exec, ${superReleaseLauncher}/bin/super-release-launcher" in hyprland
+    assert "bindid = Super, Super_L, Toggle search, global, quickshell:searchToggleRelease" not in hyprland
+    assert "bindid = Super, Super_R, Toggle search, global, quickshell:searchToggleRelease" not in hyprland
+    assert "binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt" not in hyprland
+    assert "bind = $mainMod, D, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher" in hyprland
+    assert "bind = $mainMod, Space, exec, ${superRun}/bin/super-run ${searchLauncher}/bin/search-launcher" in hyprland
     assert "bind = Super, Super_L, exec, search-launcher-super" not in hyprland
     assert "bind = Super, Super_R, exec, search-launcher-super" not in hyprland
-    assert "binditn = Super, catchall, global, quickshell:searchToggleReleaseInterrupt" in hyprland
     assert "workspace_swipe_create_new = true" in hyprland
     assert "exec-once = ${quickshellServiceStart}/bin/quickshell-service-start &" in hyprland
     assert "quickshell-session-boot starting" in hyprland
     assert "x15-quickshell.service restarted" in hyprland
     assert "${searchLauncher}/bin/search-launcher" in hyprland
+    assert "/run/wrappers/bin:/run/current-system/sw/bin" in hyprland
+
+    hypr_env = read("home/desktop/hypr/assets/hyprland/env.conf")
+    assert "/run/wrappers/bin:/run/current-system/sw/bin" in hypr_env
+
+    ilyamiro_main = read("home/desktop/quickshell/profiles/ilyamiro/scripts/quickshell/Main.qml")
+    assert 'name: "searchToggleRelease"' in ilyamiro_main
+    assert 'name: "searchToggleReleaseInterrupt"' in ilyamiro_main
+    assert "toggle applauncher" in ilyamiro_main
 
 
 def test_dev_profile_is_declarative_and_split():

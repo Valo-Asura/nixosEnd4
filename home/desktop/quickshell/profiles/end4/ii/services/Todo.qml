@@ -139,12 +139,13 @@ Singleton {
     }
 
     Component.onCompleted: {
+        Quickshell.execDetached(["bash", "-c", "mkdir -p \"$(dirname " + JSON.stringify(root.filePath) + ")\""])
         refresh()
     }
 
     FileView {
         id: todoFileView
-        path: Qt.resolvedUrl(root.filePath)
+        path: root.filePath
 
         onLoaded: {
             root.loadListFromDisk()

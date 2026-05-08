@@ -18,8 +18,8 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 # API Settings from .env
-KEY="$OPENWEATHER_KEY"
-ID="$OPENWEATHER_CITY_ID"
+KEY="${OPENWEATHER_KEY:-}"
+ID="${OPENWEATHER_CITY_ID:-1258128}"
 UNIT="${OPENWEATHER_UNIT:-metric}" # Default to metric if not set
 
 # Determine temperature symbol based on unit

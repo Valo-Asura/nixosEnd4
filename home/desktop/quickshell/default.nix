@@ -185,6 +185,7 @@ let
       updateInterval = cfg.pollInterval;
       historyLength = 30;
     };
+    screenSnip.savePath = "${config.home.homeDirectory}/Pictures";
     sidebar.keepRightSidebarLoaded = false;
     time = {
       dateFormat = "ddd, dd/MM";
@@ -364,8 +365,34 @@ let
     exec ${quickshellSession}/bin/quickshell-session profile "$@"
   '';
 
+  quickshellSwitchEnd4 = pkgs.writeShellScriptBin "quickshell-switch-end4" ''
+    exec ${quickshellSession}/bin/quickshell-session profile end4
+  '';
+
+  quickshellSwitchIlyamiro = pkgs.writeShellScriptBin "quickshell-switch-ilyamiro" ''
+    exec ${quickshellSession}/bin/quickshell-session profile ilyamiro
+  '';
+
   quickshellReload = pkgs.writeShellScriptBin "quickshell-reload" ''
     exec ${quickshellSession}/bin/quickshell-session restart
+  '';
+
+  end4Screenshot = pkgs.writeShellScriptBin "end4-screenshot" ''
+    set -euo pipefail
+
+    save_dir="$HOME/Pictures"
+    if ! ${pkgs.coreutils}/bin/mkdir -p "$save_dir" 2>/dev/null; then
+      save_dir="$(${pkgs.kdePackages.kdialog}/bin/kdialog --getexistingdirectory "$HOME" --title "Choose screenshot folder" 2>/dev/null || true)"
+      [ -n "$save_dir" ] || exit 1
+    fi
+
+    geometry="$(${pkgs.slurp}/bin/slurp 2>/dev/null || true)"
+    [ -n "$geometry" ] || exit 0
+
+    save_path="$save_dir/screenshot-$(${pkgs.coreutils}/bin/date '+%Y-%m-%d_%H.%M.%S').png"
+    ${pkgs.grim}/bin/grim -g "$geometry" "$save_path"
+    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png < "$save_path" || true
+    ${pkgs.libnotify}/bin/notify-send -a quickshell "Screenshot saved" "$save_path" || true
   '';
 
   quickshellCommand = pkgs.writeShellScriptBin "quickshell" ''
@@ -451,8 +478,11 @@ in
       quickshellProfile
       quickshellSession
       quickshellSwitch
+      quickshellSwitchEnd4
+      quickshellSwitchIlyamiro
       quickshellReload
       quickshellPython
+      end4Screenshot
     ]
     ++ qtImports
     ++ (with pkgs; [
@@ -579,7 +609,7 @@ in
         Restart = "always";
         RestartSec = "2s";
         Environment = [
-          "PATH=${homeProfileBin}:${userProfileBin}:${config.home.homeDirectory}/.nix-profile/bin:/run/current-system/sw/bin:/run/wrappers/bin"
+          "PATH=${homeProfileBin}:${userProfileBin}:${config.home.homeDirectory}/.nix-profile/bin:/run/wrappers/bin:/run/current-system/sw/bin"
           "XDG_DATA_DIRS=${homeProfileShare}:${userProfileShare}:${config.home.homeDirectory}/.nix-profile/share:${config.home.homeDirectory}/.local/share:/run/current-system/sw/share:/usr/share"
         ];
         # QuickShell can launch desktop apps. Keep service stops scoped to the
