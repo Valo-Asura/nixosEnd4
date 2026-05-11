@@ -1,0 +1,109 @@
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    drun-display-format: "{icon} {name}";
+    display-drun: "Apps";
+    display-run: "Run";
+    display-window: "Windows";
+    sidebar-mode: true;
+    matching: "fuzzy";
+    sort: true;
+}
+
+* {
+    bg: #120b10;
+    bg-alt: #191018;
+    fg: #f7d7dd;
+    muted: #b89ca4;
+    accent: #ff4d6d;
+    warning: #ff7f50;
+    border: #3a1c2a;
+    selected: #2a1620;
+    font: "JetBrainsMono Nerd Font 10";
+}
+
+window {
+    location: center;
+    anchor: center;
+    width: 44%;
+    border: 2px;
+    border-color: @accent;
+    border-radius: 8px;
+    background-color: @bg;
+}
+
+mainbox {
+    padding: 14px;
+    spacing: 10px;
+    background-color: @bg;
+}
+
+inputbar {
+    padding: 10px 12px;
+    spacing: 10px;
+    border: 1px;
+    border-color: @border;
+    border-radius: 6px;
+    background-color: @bg-alt;
+    children: [ prompt, entry ];
+}
+
+prompt {
+    text-color: @accent;
+}
+
+entry {
+    text-color: @fg;
+}
+
+message {
+    padding: 8px;
+    border-radius: 6px;
+    background-color: @bg-alt;
+    text-color: @warning;
+}
+
+listview {
+    lines: 12;
+    columns: 1;
+    fixed-height: true;
+    cycle: true;
+    scrollbar: false;
+    spacing: 4px;
+}
+
+element {
+    padding: 8px 10px;
+    spacing: 10px;
+    border-radius: 6px;
+    text-color: @fg;
+}
+
+element selected {
+    background-color: @accent;
+    text-color: @bg;
+}
+
+element-icon {
+    size: 1.1em;
+}
+
+element-text {
+    text-color: inherit;
+}
+
+mode-switcher {
+    spacing: 6px;
+}
+
+button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: @bg-alt;
+    text-color: @muted;
+}
+
+button selected {
+    background-color: @selected;
+    text-color: @fg;
+}

@@ -197,6 +197,7 @@ def test_i3_fallback_uses_nixos_xserverrc_and_user_config():
     i3_module = read("modules/desktop/i3-session.nix")
     user = read("users/asura/default.nix")
     i3_config = read("home/desktop/i3/config")
+    i3status = read("home/desktop/i3/i3status.conf")
     host = read("hosts/x15xs/default.nix")
 
     assert "i3Session.enable = true;" in host
@@ -208,7 +209,24 @@ def test_i3_fallback_uses_nixos_xserverrc_and_user_config():
     assert "osConfig.services.xserver.displayManager.xserverArgs" in user
     assert "pkgs.xorg-server" in user
     assert "bindsym $mod+q kill" in i3_config
+    assert "focus_follows_mouse yes" in i3_config
+    assert "i3RofiTheme = ../../home/desktop/i3/rofi.rasi;" in i3_module
+    assert (REPO / "home/desktop/i3/rofi.rasi").exists()
+    assert "x15-i3-launcher" in i3_module
+    assert "-show drun" in i3_module
+    assert "-drun-match-fields name,generic,exec,categories,keywords" in i3_module
+    assert "x15-i3-gestures" in i3_module
+    assert "libinput-gestures" in i3_module
+    assert "gesture swipe left 3 ${i3WorkspaceSwipe}/bin/x15-i3-workspace-swipe next" in i3_module
+    assert "gesture swipe right 3 ${i3WorkspaceSwipe}/bin/x15-i3-workspace-swipe prev" in i3_module
+    assert 'exec ${pkgs.i3}/bin/i3-msg "workspace number $target"' in i3_module
+    assert "x15-i3-greenclip" in i3_module
+    assert "exec --no-startup-id dex -a -s /etc/xdg/autostart" in i3_config
+    assert "exec --no-startup-id x15-i3-greenclip" in i3_config
+    assert "exec --no-startup-id x15-i3-gestures" in i3_config
+    assert "exec --no-startup-id xss-lock --transfer-sleep-lock -- $lock" in i3_config
     assert "exec_always --no-startup-id x15-i3-apply-wallpaper" in i3_config
+    assert "interval = 10" in i3status
 
 
 def test_yazi_flavor_is_vendored():

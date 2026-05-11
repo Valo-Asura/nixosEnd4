@@ -8,13 +8,25 @@
 let
   cfg = config.modules.i3Session;
   greenclipPkg = pkgs.haskellPackages.greenclip;
+  i3RofiTheme = ../../home/desktop/i3/rofi.rasi;
 
   i3Launcher = pkgs.writeShellScriptBin "x15-i3-launcher" ''
-    exec ${pkgs.rofi}/bin/rofi -show drun -show-icons
+    exec ${pkgs.rofi}/bin/rofi \
+      -show drun \
+      -theme ${i3RofiTheme} \
+      -drun-match-fields name,generic,exec,categories,keywords \
+      -matching fuzzy \
+      -sort \
+      -no-lazy-grab
   '';
 
   i3Overview = pkgs.writeShellScriptBin "x15-i3-overview" ''
-    exec ${pkgs.rofi}/bin/rofi -show window -show-icons
+    exec ${pkgs.rofi}/bin/rofi \
+      -show window \
+      -theme ${i3RofiTheme} \
+      -matching fuzzy \
+      -sort \
+      -no-lazy-grab
   '';
 
   i3Lock = pkgs.writeShellScriptBin "x15-i3-lock" ''
@@ -29,11 +41,64 @@ let
       sleep 0.2
     fi
 
-    selection="$(${greenclipPkg}/bin/greenclip print | ${pkgs.rofi}/bin/rofi -dmenu -i -p clipboard 2>/dev/null || true)"
+    selection="$(${greenclipPkg}/bin/greenclip print | ${pkgs.rofi}/bin/rofi -dmenu -i -theme ${i3RofiTheme} -p clipboard -matching fuzzy -sort 2>/dev/null || true)"
     [ -n "$selection" ] || exit 0
 
     printf '%s' "$selection" | ${pkgs.xclip}/bin/xclip -selection clipboard
     printf '%s' "$selection" | ${pkgs.xclip}/bin/xclip -selection primary
+  '';
+
+  i3Greenclip = pkgs.writeShellScriptBin "x15-i3-greenclip" ''
+    set -euo pipefail
+
+    if ${pkgs.procps}/bin/pgrep -x greenclip >/dev/null 2>&1; then
+      exit 0
+    fi
+
+    exec ${greenclipPkg}/bin/greenclip daemon
+  '';
+
+  i3WorkspaceSwipe = pkgs.writeShellScriptBin "x15-i3-workspace-swipe" ''
+    set -euo pipefail
+
+    direction="''${1:-}"
+    current="$(${pkgs.i3}/bin/i3-msg -t get_workspaces | ${pkgs.jq}/bin/jq -r '.[] | select(.focused).num' | ${pkgs.coreutils}/bin/head -n 1)"
+
+    case "$current" in
+      ""|*[!0-9]*) current=1 ;;
+    esac
+
+    case "$direction" in
+      next) target=$((current + 1)) ;;
+      prev) target=$((current - 1)) ;;
+      *) exit 2 ;;
+    esac
+
+    if [ "$target" -lt 1 ]; then
+      target=1
+    elif [ "$target" -gt 9 ]; then
+      target=9
+    fi
+
+    [ "$target" -ne "$current" ] || exit 0
+    exec ${pkgs.i3}/bin/i3-msg "workspace number $target"
+  '';
+
+  i3GestureConfig = pkgs.writeText "x15-i3-gestures.conf" ''
+    swipe_threshold 120
+    timeout 1.2
+    gesture swipe left 3 ${i3WorkspaceSwipe}/bin/x15-i3-workspace-swipe next
+    gesture swipe right 3 ${i3WorkspaceSwipe}/bin/x15-i3-workspace-swipe prev
+  '';
+
+  i3Gestures = pkgs.writeShellScriptBin "x15-i3-gestures" ''
+    set -euo pipefail
+
+    if ${pkgs.procps}/bin/pgrep -u "$(${pkgs.coreutils}/bin/id -u)" -f "libinput-gestures.*x15-i3-gestures.conf" >/dev/null 2>&1; then
+      exit 0
+    fi
+
+    exec ${pkgs.libinput-gestures}/bin/libinput-gestures -c ${i3GestureConfig}
   '';
 
   i3Emoji = pkgs.writeShellScriptBin "x15-i3-emoji" ''
@@ -137,7 +202,7 @@ let
 
     [ "''${#candidates[@]}" -gt 0 ] || exit 1
 
-    selection="$(printf '%s\n' "''${candidates[@]}" | ${pkgs.rofi}/bin/rofi -dmenu -i -p wallpaper 2>/dev/null || true)"
+    selection="$(printf '%s\n' "''${candidates[@]}" | ${pkgs.rofi}/bin/rofi -dmenu -i -theme ${i3RofiTheme} -p wallpaper -matching fuzzy -sort 2>/dev/null || true)"
     [ -n "$selection" ] || exit 0
 
     config_file="$HOME/.config/illogical-impulse/config.json"
@@ -213,6 +278,8 @@ in
       i3ApplyWallpaper
       i3Clipboard
       i3Emoji
+      i3Gestures
+      i3Greenclip
       i3Launcher
       i3Lock
       i3NightShift
@@ -220,6 +287,7 @@ in
       i3Screenshot
       i3WallpaperMenu
       i3WallpaperRandom
+      i3WorkspaceSwipe
     ];
   };
 }

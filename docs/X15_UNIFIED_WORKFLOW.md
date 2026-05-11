@@ -309,6 +309,7 @@ Use these files first:
 - ilyamiro QuickShell source: `home/desktop/quickshell/profiles/ilyamiro/scripts/`
 - i3 fallback module: `modules/desktop/i3-session.nix`
 - i3 user config: `home/desktop/i3/config`
+- i3 rofi app drawer theme: `home/desktop/i3/rofi.rasi`
 - user-level desktop links: `users/asura/default.nix`
 
 The live generated files are usually symlinks into `/nix/store`. Always compare live paths with repo paths before assuming a patch is active.
@@ -362,6 +363,18 @@ jq -r '.current_temp, .forecast[0].desc' ~/.cache/quickshell/weather/weather.jso
 
 The i3 fallback is an X11 session selected from greetd/tuigreet. It should show the i3 bar, apply the wallpaper, use the same `Super+Q` / launcher / workspace feel as Hyprland where practical, and accept mouse or touchpad input.
 
+Current i3 launcher and performance expectations:
+
+- `Super+Space` and `Super+D` open the rofi `drun` app drawer through `x15-i3-launcher`.
+- The i3 fallback uses rofi because this session is X11. Keep wofi on the Wayland/Hyprland side if it is needed later.
+- The rofi theme lives with the i3 files at `home/desktop/i3/rofi.rasi`.
+- i3 focuses the window under the pointer with `focus_follows_mouse yes`, matching Hyprland's `follow_mouse = 1` behavior.
+- Three-finger touchpad swipes switch numbered workspaces through `x15-i3-gestures` and `x15-i3-workspace-swipe`.
+- Swipe left moves to the next workspace number; swipe right moves to the previous workspace number.
+- `dex`, `greenclip`, and `xss-lock` use one-time `exec` startup entries so an i3 reload does not duplicate background work.
+- Wallpaper and cursor repair stay on `exec_always` because they are cheap and useful after reloads.
+- `i3status` polls every 10 seconds to keep the fallback bar light.
+
 The failure mode found on May 8, 2026 was:
 
 - Xorg started.
@@ -413,6 +426,7 @@ For i3 specifically:
 ```sh
 i3 -C -c home/desktop/i3/config
 i3 -C -c /etc/i3/config
+pgrep -af 'libinput-gestures.*x15-i3-gestures.conf'
 ```
 
 ### 4.6 Future chat handoff
@@ -423,6 +437,8 @@ Use this short handoff when continuing the work in a new chat:
 Working tree: /etc/nixos on x15xs.
 Main session: Hyprland with End4 QuickShell, launched through greetd -> uwsm.
 Fallback session: i3 through greetd/tuigreet XSession -> startx.
+i3 app drawer: rofi through x15-i3-launcher, themed by home/desktop/i3/rofi.rasi.
+i3 pointer focus and three-finger workspace swipes are owned by home/desktop/i3/config and modules/desktop/i3-session.nix.
 Check live state before editing: git status, readlink generated config paths, hyprctl submap/binds, qs list, hyprctl layers, x15-quickshell journal.
 i3 mouse failure was from Xorg not loading libinput because raw startx missed NixOS xserver args. Verify ~/.xserverrc and Xorg logs.
 Finish with pytest migration tests, git diff --check, and nix dry build.

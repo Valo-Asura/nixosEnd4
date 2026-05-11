@@ -16,7 +16,7 @@ set $wallpaper_random x15-i3-wallpaper-random
 
 font pango:JetBrainsMono Nerd Font 10
 floating_modifier $mod
-focus_follows_mouse no
+focus_follows_mouse yes
 mouse_warping none
 workspace_auto_back_and_forth yes
 hide_edge_borders smart
@@ -26,10 +26,11 @@ gaps inner 10
 gaps outer 5
 
 # Startup
-exec_always --no-startup-id dex -a -s /etc/xdg/autostart
-exec_always --no-startup-id greenclip daemon
+exec --no-startup-id dex -a -s /etc/xdg/autostart
+exec --no-startup-id x15-i3-greenclip
+exec --no-startup-id x15-i3-gestures
 exec_always --no-startup-id x15-i3-apply-wallpaper
-exec_always --no-startup-id xss-lock --transfer-sleep-lock -- $lock
+exec --no-startup-id xss-lock --transfer-sleep-lock -- $lock
 # Fix invisible cursor in X11
 exec_always --no-startup-id xsetroot -cursor_name left_ptr
 
